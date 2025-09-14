@@ -1,6 +1,10 @@
 [package]
 name = "hangoutinator"
 version = "0.1.0"
+authors = ["calebsg225 calebsg2253284@gmail.com"]
 edition = "2024"
 
 [dependencies]
+dotenv = "0.15"
+serenity = "0.12"
+tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
