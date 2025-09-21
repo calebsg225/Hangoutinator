@@ -110,7 +110,15 @@ async fn main() {
     dotenv::dotenv().expect("Failed to load .env file.");
 
     let token = env::var("TOKEN").expect("Expected a token in the environment.");
-    println!("{token}");
+
+    // NOTE: Not compatable with more than a single guild.
+    // TODO: Use a database.
+    let verified_role_id: RoleId = RoleId::from(
+        env::var("VERIFIED_ROLE_ID")
+            .expect("Expected a verified role id in the environment.")
+            .parse::<u64>()
+            .unwrap(),
+    );
 
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES
@@ -147,7 +155,7 @@ async fn main() {
             let unverified_guild_members: HashSet<UserId> = HashSet::from_iter(
                 guild_members
                     .iter()
-                    .filter(|m| !m.roles.contains(&RoleId::from(234)))
+                    .filter(|m| !m.roles.contains(&verified_role_id))
                     .map(|m| m.user.id),
             );
             global_unverified_members.insert(guild.id, unverified_guild_members);
