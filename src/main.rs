@@ -11,7 +11,7 @@ use serenity::{
     Client,
     all::{
         ChannelId, Context, CreateMessage, EventHandler, GatewayIntents, GuildId,
-        GuildMemberUpdateEvent, Member, OnlineStatus, Ready, RoleId, UserId,
+        GuildMemberUpdateEvent, Member, Mentionable, OnlineStatus, Ready, RoleId, UserId,
     },
     async_trait,
     prelude::TypeMapKey,
@@ -89,11 +89,9 @@ impl EventHandler for Handler {
 
         if is_unverified && user_has_role {
             remove_verified_member(&ctx, event.guild_id, event.user.id).await;
+            let welcome_message = format!("Welcome, {}!", event.user.mention());
             let _ = welcome_channel_id
-                .send_message(
-                    &ctx.http,
-                    CreateMessage::new().content("[WELCOME MESSAGE HERE]"),
-                )
+                .send_message(&ctx.http, CreateMessage::new().content(welcome_message))
                 .await;
         }
     }
@@ -148,6 +146,7 @@ async fn main() {
         // guilds
         let mut data = client.data.write().await;
         let global_unverified_members = data.get_mut::<UnverifiedMemberCollection>().unwrap();
+        println!("Active guild count: {}", active_guilds.len());
         for guild in active_guilds.iter() {
             // fetch guild members for each guild the bot is in
             // NOTE: Further steps required to retrieve more than 1000 members.
@@ -157,6 +156,11 @@ async fn main() {
                     .iter()
                     .filter(|m| !m.roles.contains(&verified_role_id))
                     .map(|m| m.user.id),
+            );
+            println!(
+                "Unverified member count in guild {}: {:?}",
+                guild.id,
+                unverified_guild_members.len()
             );
             global_unverified_members.insert(guild.id, unverified_guild_members);
         }
