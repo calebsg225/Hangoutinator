@@ -36,6 +36,17 @@ async fn is_unverified_member(ctx: &Context, guild_id: GuildId, user_id: UserId)
     return unverified_members.contains(&user_id);
 }
 
+/// Removes a verified user from `UnverifiedMembersCollection`
+async fn remove_verified_member(ctx: &Context, guild_id: GuildId, user_id: UserId) -> bool {
+    let mut data = ctx.data.write().await;
+    let unverified_members = data
+        .get_mut::<UnverifiedMemberCollection>()
+        .unwrap()
+        .get_mut(&guild_id)
+        .unwrap();
+    unverified_members.remove(&user_id)
+}
+
 struct Handler;
 
 #[async_trait]
@@ -77,6 +88,7 @@ impl EventHandler for Handler {
         );
 
         if is_unverified && user_has_role {
+            remove_verified_member(&ctx, event.guild_id, event.user.id).await;
             let _ = welcome_channel_id
                 .send_message(
                     &ctx.http,
