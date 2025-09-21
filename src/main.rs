@@ -126,12 +126,33 @@ async fn main() {
         .expect("Err creating client");
 
     {
-        // add collections to client
+        // in this scope: add collections to client
         let mut data = client.data.write().await;
         data.insert::<UnverifiedMemberCollection>(HashMap::default());
     }
 
-    // TODO: add all unverified members in [each] guild to `UnverifiedMemberCollection`
+    // fetch guilds the bot is in
+    // NOTE: Further steps required to retrieve more than 100 guilds.
+    let active_guilds = client.http.get_guilds(None, Some(100)).await.unwrap();
+
+    {
+        // in this scope: populate `UnverifiedMemberCollection` with unverified members from all
+        // guilds
+        let mut data = client.data.write().await;
+        let global_unverified_members = data.get_mut::<UnverifiedMemberCollection>().unwrap();
+        for guild in active_guilds.iter() {
+            // fetch guild members for each guild the bot is in
+            // NOTE: Further steps required to retrieve more than 1000 members.
+            let guild_members = guild.id.members(&client.http, None, None).await.unwrap();
+            let unverified_guild_members: HashSet<UserId> = HashSet::from_iter(
+                guild_members
+                    .iter()
+                    .filter(|m| !m.roles.contains(&RoleId::from(234)))
+                    .map(|m| m.user.id),
+            );
+            global_unverified_members.insert(guild.id, unverified_guild_members);
+        }
+    }
 
     // start a single shard, and start listening to events
     //
