@@ -82,11 +82,6 @@ impl EventHandler for Handler {
         // check that the user has the role.
         let user_has_role = event.roles.contains(&verified_role_id);
 
-        println!(
-            "user is not verified: {}, user has the verified role: {}",
-            is_unverified, user_has_role
-        );
-
         if is_unverified && user_has_role {
             remove_verified_member(&ctx, event.guild_id, event.user.id).await;
             let welcome_message = format!("Welcome, {}!", event.user.mention());
@@ -105,7 +100,8 @@ impl EventHandler for Handler {
 #[tokio::main]
 async fn main() {
     // load env vars
-    dotenv::dotenv().expect("Failed to load .env file.");
+    // This will not panic.
+    dotenv::dotenv().unwrap_or_default();
 
     let token = env::var("TOKEN").expect("Expected a token in the environment.");
 
@@ -120,7 +116,6 @@ async fn main() {
 
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES
-        | GatewayIntents::MESSAGE_CONTENT
         // used to detect role assignment/reassignment
         | GatewayIntents::GUILD_MEMBERS;
 
