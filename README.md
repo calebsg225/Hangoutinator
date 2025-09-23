@@ -16,7 +16,7 @@
 
 ### Create the app
 
-Create a new discord application ![here](https://discord.com/developers/applications).
+Create a new discord application [here](https://discord.com/developers/applications).
 
 For the [Welcome Role](#welcoming-verified-members) feature to work, `Server Members Intent` must be
 toggled on. Do this from your bot application page by selecting `Bot` on the sidebar and scrolling to
@@ -65,6 +65,6 @@ Your bot should now run!
 
 ### Welcoming Verified Members
 
-TODO: make commands for selecting roles and channels for this feature
+TODO: make commands for selecting roles and channels for this feature from discord
 
 ** does not yet support mutliple guilds
