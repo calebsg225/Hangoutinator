@@ -2,56 +2,69 @@
 
 ![](./images/doofenshmirtz.webp)
 
+## Overview
+- [Usage](#usage)
+    - [Create the app](#create-the-app)
+    - [Server invitation](#server-invitation)
+    - [Setting up the environment](#setting-up-the-environment)
+    - [Running the bot](#running-the-bot)
+    - [Other useful commands](#other-useful-commands)
+- [Features](#features)
+    - [Welcoming Verified Members](#welcoming-verified-members)
+
 ## Usage
 
 ### Create the app
 
-TODO
+Create a new discord application ![here](https://discord.com/developers/applications).
 
-- `Server Members Intent` must be toggled on:
+For the [Welcome Role](#welcoming-verified-members) feature to work, `Server Members Intent` must be
+toggled on. Do this from your bot application page by selecting `Bot` on the sidebar and scrolling to
+`SERVER MEMBERS INTENT`, then flipping on the toggle.
+
+### Server invitation
+
+To add your bot to a server, on your bot application page, select `OAuth2` on the sidebar. Scroll to the `OAuth URL Generator`. 
+In the `SCOPES` panel, toggle the following:
+ - `bot`
+ - `applications.commands`
+
+A `BOT PERMISSIONS` panel will appear below. Toggle the following from this panel:
+ - `Send Messages`
+
+Scroll to the bottom of the page. Go to the URL generated and follow the prompts.
 
 ### Setting up the environment
 
 Before advancing further, make sure to create the `.env` file following `.env.example`.
 
-The desired Verified Role Id and Welcome Channel Id can be copied from the discord server.
+Grab your bots token from your bots application page by selecting `Bot` from the sidebar
+and scrolling down to `TOKEN`.
+
+The desired Verified Role Id and Welcome Channel Id can be copied from your discord server.
 
 ### Running the bot
 
-Build the docker image:
-```
-make
-```
+Run `make` in your terminal from the projects main directory to build the docker image. This may take a few minutes the first time. 
+Once complete, run `make run` to create and start the docker container from the newly created image.
 
-Create the docker container:
-```
-make create
-```
+Your bot should now run!
 
-Start the container:
-```
-make start
-```
+### Other useful commands
 
-Combined Create/Start:
-```
-make run
-```
-
-Stop the container:
-```
-make stop
-```
-
-Destroy the container:
-```
-make destroy
-```
+|Command|Function|
+|-|-|
+|`make`|builds the docker image|
+|`make create`|creates the docker container from the image|
+|`make start`|starts the docker container|
+|`make run`|combined `make create` and `make start`|
+|`make stop`|stop the running docker container|
+|`make destroy`|destroy the stopped docker container|
 
 ## Features
 
-### Welcoming Verified Users
+### Welcoming Verified Members
 
-TODO
+TODO: make commands for selecting roles and channels for this feature
 
 ** does not yet support mutliple guilds
