@@ -68,10 +68,8 @@ async fn main() {
             .unwrap(),
     );
 
-    let intents = GatewayIntents::GUILD_MESSAGES
-        | GatewayIntents::DIRECT_MESSAGES
-        // used to detect role assignment/reassignment
-        | GatewayIntents::GUILD_MEMBERS;
+    // `GUILD_MEMBERS` used to detect role assignment/reassignment
+    let intents = GatewayIntents::GUILD_MEMBERS;
 
     // build client
     let mut client = Client::builder(&token, intents)

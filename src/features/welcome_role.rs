@@ -59,6 +59,7 @@ pub async fn welcome_verified_member(
         let _ = welcome_channel_id
             .send_message(&ctx.http, CreateMessage::new().content(welcome_message))
             .await;
+        println!("Member `{}` has been welcomed.", event.user.name);
     }
 }
 
