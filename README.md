@@ -60,6 +60,7 @@ Your bot should now run!
 |`make run`|combined `make create` and `make start`|
 |`make stop`|stop the running docker container|
 |`make destroy`|destroy the stopped docker container|
+|`make logs`|prints out logs from the running docker container|
 
 ## Features
 
