@@ -5,10 +5,10 @@ use std::{collections::HashMap, env};
 use serenity::{
     Client,
     all::{
-        ChannelId, Context, EventHandler, GatewayIntents, GuildId, GuildMemberUpdateEvent, Member,
+        ChannelId, Context, EventHandler, GatewayIntents, GuildMemberUpdateEvent, Member,
         OnlineStatus, Ready, RoleId,
     },
-    async_trait, cache,
+    async_trait,
 };
 
 mod features;
@@ -44,6 +44,21 @@ impl EventHandler for Handler {
 
         welcome_role::welcome_verified_member(&ctx, &event, &verified_role_id, &welcome_channel_id)
             .await;
+    }
+
+    /// runs when a member joins a guild
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
+        let guild_id = new_member.guild_id;
+        let user_id = new_member.user.id;
+
+        println!(
+            "Member with id {} has joined guild with id {}",
+            &guild_id, &user_id
+        );
+
+        // when a member leaves a guild, attempt to remove them
+        // from `UnverifiedMemberCollection`
+        welcome_role::add_member(&ctx, guild_id, user_id).await;
     }
 
     /// runs when the bot is ready

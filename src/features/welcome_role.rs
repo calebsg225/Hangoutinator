@@ -30,7 +30,7 @@ async fn is_unverified_member(ctx: &Context, guild_id: GuildId, user_id: UserId)
 }
 
 /// Removes a verified member from `UnverifiedMembersCollection`
-async fn remove_verified_member(ctx: &Context, guild_id: GuildId, user_id: UserId) -> bool {
+pub async fn remove_member(ctx: &Context, guild_id: GuildId, user_id: UserId) -> bool {
     let mut data = ctx.data.write().await;
     let unverified_members = data
         .get_mut::<UnverifiedMemberCollection>()
@@ -38,6 +38,16 @@ async fn remove_verified_member(ctx: &Context, guild_id: GuildId, user_id: UserI
         .get_mut(&guild_id)
         .unwrap();
     unverified_members.remove(&user_id)
+}
+
+pub async fn add_member(ctx: &Context, guild_id: GuildId, user_id: UserId) {
+    let mut data = ctx.data.write().await;
+    let unverified_members = data
+        .get_mut::<UnverifiedMemberCollection>()
+        .unwrap()
+        .get_mut(&guild_id)
+        .unwrap();
+    unverified_members.insert(user_id);
 }
 
 /// checks if a member has been verified. If so, sends a welcome message.
@@ -53,7 +63,7 @@ pub async fn welcome_verified_member(
     let member_has_role = event.roles.contains(&verified_role_id);
 
     if is_unverified && member_has_role {
-        remove_verified_member(&ctx, event.guild_id, event.user.id).await;
+        remove_member(&ctx, event.guild_id, event.user.id).await;
         let welcome_message = format!("Welcome, {}!", event.user.mention());
         let _ = welcome_channel_id
             .send_message(&ctx.http, CreateMessage::new().content(welcome_message))
