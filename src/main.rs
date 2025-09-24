@@ -5,10 +5,10 @@ use std::{collections::HashMap, env};
 use serenity::{
     Client,
     all::{
-        ChannelId, Context, EventHandler, GatewayIntents, GuildMemberUpdateEvent, Member,
+        ChannelId, Context, EventHandler, GatewayIntents, GuildId, GuildMemberUpdateEvent, Member,
         OnlineStatus, Ready, RoleId,
     },
-    async_trait,
+    async_trait, cache,
 };
 
 mod features;
@@ -22,8 +22,8 @@ impl EventHandler for Handler {
     async fn guild_member_update(
         &self,
         ctx: Context,
-        _: Option<Member>,
-        _: Option<Member>,
+        _old: Option<Member>, // can't get cache to work...
+        _new: Option<Member>, // can't get cache to work...
         event: GuildMemberUpdateEvent,
     ) {
         // NOTE: Storing the channel id and role id in .env will only work for a single guild.
@@ -47,8 +47,21 @@ impl EventHandler for Handler {
     }
 
     /// runs when the bot is ready
-    async fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
+        // NOTE: Not compatable with more than a single guild.
+        let verified_role_id: RoleId = RoleId::from(
+            env::var("VERIFIED_ROLE_ID")
+                .expect("Expected a verified role id in the environment.")
+                .parse::<u64>()
+                .unwrap(),
+        );
+
         println!("{} is connected!", ready.user.name);
+        welcome_role::populate_unverified_members(&ctx, &verified_role_id).await;
+    }
+
+    async fn shards_ready(&self, _ctx: Context, total_shards: u32) {
+        println!("{} shard(s) ready", total_shards);
     }
 }
 
@@ -60,14 +73,6 @@ async fn main() {
 
     let token = env::var("TOKEN").expect("Expected a token in the environment.");
 
-    // NOTE: Not compatable with more than a single guild.
-    let verified_role_id: RoleId = RoleId::from(
-        env::var("VERIFIED_ROLE_ID")
-            .expect("Expected a verified role id in the environment.")
-            .parse::<u64>()
-            .unwrap(),
-    );
-
     // `GUILD_MEMBERS` used to detect role assignment/reassignment
     let intents = GatewayIntents::GUILD_MEMBERS;
 
@@ -75,18 +80,11 @@ async fn main() {
     let mut client = Client::builder(&token, intents)
         .event_handler(Handler)
         .status(OnlineStatus::Idle)
+        .type_map_insert::<welcome_role::UnverifiedMemberCollection>(HashMap::default())
         .await
         .expect("Err creating client");
 
-    {
-        // in this scope: add collections to client
-        let mut data = client.data.write().await;
-        data.insert::<welcome_role::UnverifiedMemberCollection>(HashMap::default());
-    }
-
-    welcome_role::populate_unverified_members(&client, &verified_role_id).await;
-
-    if let Err(why) = client.start().await {
+    if let Err(why) = client.start_autosharded().await {
         println!("Client error: {why:?}");
     }
 }
