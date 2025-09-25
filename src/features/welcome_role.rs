@@ -40,14 +40,14 @@ pub async fn remove_member(ctx: &Context, guild_id: GuildId, user_id: UserId) ->
     unverified_members.remove(&user_id)
 }
 
-pub async fn add_member(ctx: &Context, guild_id: GuildId, user_id: UserId) {
+pub async fn add_member(ctx: &Context, guild_id: GuildId, user_id: UserId) -> bool {
     let mut data = ctx.data.write().await;
     let unverified_members = data
         .get_mut::<UnverifiedMemberCollection>()
         .unwrap()
         .get_mut(&guild_id)
         .unwrap();
-    unverified_members.insert(user_id);
+    unverified_members.insert(user_id)
 }
 
 /// checks if a member has been verified. If so, sends a welcome message.

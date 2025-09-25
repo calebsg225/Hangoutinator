@@ -5,8 +5,8 @@ use std::{collections::HashMap, env};
 use serenity::{
     Client,
     all::{
-        ChannelId, Context, EventHandler, GatewayIntents, GuildMemberUpdateEvent, Member,
-        OnlineStatus, Ready, RoleId,
+        ChannelId, Context, EventHandler, GatewayIntents, GuildId, GuildMemberUpdateEvent, Member,
+        OnlineStatus, Ready, RoleId, User,
     },
     async_trait,
 };
@@ -56,9 +56,26 @@ impl EventHandler for Handler {
             &guild_id, &user_id
         );
 
+        // when a member joins a guild, attempt to add them
+        // to `UnverifiedMemberCollection`
+        welcome_role::add_member(&ctx, guild_id, user_id).await;
+    }
+
+    async fn guild_member_removal(
+        &self,
+        ctx: Context,
+        guild_id: GuildId,
+        user: User,
+        _member_data: Option<Member>,
+    ) {
+        println!(
+            "Member with id {} has been removed from guild with id {}.",
+            &guild_id, &user.id
+        );
+
         // when a member leaves a guild, attempt to remove them
         // from `UnverifiedMemberCollection`
-        welcome_role::add_member(&ctx, guild_id, user_id).await;
+        welcome_role::remove_member(&ctx, guild_id, user.id).await;
     }
 
     /// runs when the bot is ready
