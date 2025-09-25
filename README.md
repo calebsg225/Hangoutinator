@@ -36,7 +36,9 @@ Scroll to the bottom of the page. Go to the URL generated and follow the prompts
 
 ### Setting up the environment
 
-Before advancing further, make sure to create the `.env` file following `.env.example`.
+Clone the repo, then `cd` into it.
+
+Make sure to create the `.env` file following `.env.example`.
 
 Grab your bots token from your bots application page by selecting `Bot` from the sidebar
 and scrolling down to `TOKEN`.
@@ -48,7 +50,7 @@ The desired Verified Role Id and Welcome Channel Id can be copied from your disc
 Run `make` in your terminal from the projects main directory to build the docker image. This may take a few minutes the first time. 
 Once complete, run `make run` to create and start the docker container from the newly created image.
 
-Your bot should now run!
+The bot should now be running.
 
 ### Other useful commands
 
