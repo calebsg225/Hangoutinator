@@ -1,4 +1,6 @@
-//! src/meetup/scraper.rs
+//! src/meetup/scrape.rs
+
+use std::collections::BTreeMap;
 
 use scraper::{Html, Selector};
 
@@ -12,6 +14,8 @@ const WATCHED_GROUPS: [&str; 2] = ["gwinnett-hangouts", "roswell-and-alpharetta-
 /// fetches all events from each group in `WATCHED_GROUPS`
 fn fetch_events() {}
 
+/// fetches the JSON data containing meetup events for a particular group
+/// given the URL for that groups upcoming events page
 fn fetch_page_json(url: &str) -> Result<String, Box<dyn std::error::Error>> {
     let response = reqwest::blocking::get(url)?;
     println!(

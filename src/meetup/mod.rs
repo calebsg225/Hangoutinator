@@ -1,3 +1,4 @@
 //! src/meetup/mod.rs
 
-pub mod scraper;
+pub mod scrape;
+pub mod structure;
