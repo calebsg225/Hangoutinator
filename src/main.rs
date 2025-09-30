@@ -12,6 +12,7 @@ use serenity::{
 };
 
 mod features;
+mod meetup;
 
 use features::welcome_role;
 
