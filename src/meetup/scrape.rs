@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use scraper::{Html, Selector};
 use serde_json::{Map, Value, from_str};
 
-use crate::meetup::structure::{Event, FieldType, Member};
+use crate::meetup::structure::{Event, FieldType, Member, PhotoInfo, Venue};
 
 // using `consts` instead of `.env` vars.
 // NOTE: If watched groups are to be changed from the discord server (by admins),
@@ -92,6 +92,31 @@ impl MeetupManager<Populated> {
             .as_object()
             .expect("The JSON `Value` found is not an object.")
             .to_owned()
+    }
+
+    /// Extracts JSON `Value`s whos keys match a partial string.
+    /// Used for dealing with ridiculously named JSON fields.
+    fn extract_fields(&self, props: &Map<String, Value>, partial: &str) -> Vec<Value> {
+        props
+            .iter()
+            .filter_map(|(k, v)| match k.find(partial) {
+                Some(_) => Some(v.to_owned()),
+                _ => None,
+            })
+            .collect::<Vec<Value>>()
+    }
+
+    fn extract_event() -> Event {
+        todo!()
+    }
+    fn extract_member() -> Member {
+        todo!()
+    }
+    fn extract_venue() -> Venue {
+        todo!()
+    }
+    fn extract_photo() -> PhotoInfo {
+        todo!()
     }
 
     /// get all upcoming events in a given meetup group
