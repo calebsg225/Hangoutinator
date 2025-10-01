@@ -117,6 +117,8 @@ async fn main() {
         .await
         .expect("Err creating client");
 
+    // TODO: start a scheduler to handle event updates
+
     if let Err(why) = client.start_autosharded().await {
         println!("Client error: {why:?}");
     }

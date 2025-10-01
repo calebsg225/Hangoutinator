@@ -15,12 +15,16 @@ const MEETUP_START_URL: &str = "https://meetup.com/";
 const MEETUP_END_URL: &str = "/events/?type=upcoming";
 const WATCHED_GROUPS: [&str; 2] = ["gwinnett-hangouts", "roswell-and-alpharetta-20s-30s"];
 
+/// NOTE: Should I even have implemented populated/unpopulated??
+/// Does not seem needed. Also seems to add extra steps.
+///
 /// used to define a `MeetupManager` as having meetup data
 pub struct Populated;
 /// used to define a `MeetupManager` as not having any meetup data
 pub struct Unpopulated;
 
 /// Manage scraped meetup data
+#[derive(Debug, Clone)]
 pub struct MeetupManager<State = Unpopulated> {
     // TODO: make separate `Events`, `Members`, etc. section?
     groups_json: HashMap<String, String>,
@@ -29,7 +33,7 @@ pub struct MeetupManager<State = Unpopulated> {
 }
 
 impl MeetupManager {
-    fn from() -> Self {
+    pub fn new() -> Self {
         MeetupManager {
             groups_json: HashMap::default(),
             watched_groups: Vec::from(WATCHED_GROUPS.map(|g| g.to_owned())),
@@ -76,8 +80,9 @@ impl MeetupManager<Populated> {
     }
 
     /// gets the props map containing all events, members, groups, venues, etc.
-    /// This function is specific to the meetup JSON data scraped from
+    /// WARN: This function is specific to the meetup JSON data scraped from
     /// their web page. If they change the structure, this will no longer work.
+    /// TODO: deal with `expect`s
     fn isolate_props(&self, group: &str) -> Map<String, Value> {
         let json = &self.groups_json.get(group).unwrap();
         let json_map = serde_json::from_str::<HashMap<String, Value>>(json).unwrap();
@@ -115,7 +120,7 @@ impl MeetupManager<Populated> {
     fn extract_venue() -> Venue {
         todo!()
     }
-    fn extract_photo() -> PhotoInfo {
+    fn extract_photo_info() -> PhotoInfo {
         todo!()
     }
 
@@ -157,33 +162,11 @@ impl<State> MeetupManager<State> {
     }
 
     /// removes outer html tags (assumes no inner html tags)
-    /// NOTE: could be problematic depending on input string
+    /// WARN: could be problematic depending on input string
     fn strip_outer_html(&self, html: String) -> String {
         html.split(">").collect::<Vec<&str>>()[1]
             .split("<")
             .collect::<Vec<&str>>()[0]
             .to_string()
     }
-}
-
-/// extracts JSON k/v pairs matching the key to a partial string
-/// Used to deal with ridiculously named JSON fields
-// TODO: Move this method onto the `MeetupManager` struct
-fn extract_fields(map: &Value, field_match: &str) -> Vec<(String, Value)> {
-    map.as_object()
-        .unwrap()
-        .iter()
-        .filter_map(|(k, v)| match k.find(field_match) {
-            Some(_) => Some((k.to_owned(), v.to_owned())),
-            _ => None,
-        })
-        .collect::<Vec<(String, Value)>>()
-}
-
-/// extracts an event matching the key to a partial string
-/// Used to deal with ridiculously named JSON fields
-// TODO: Move this method onto the `MeetupManager` struct
-fn extract_event(map: &Value, field_match: &str) -> Event {
-    let extracted = &extract_fields(map, field_match)[0].1.to_string();
-    from_str(extracted).expect("Could not deserialize json into type `Event`")
 }
