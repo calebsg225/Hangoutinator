@@ -2,13 +2,21 @@
 
 use std::collections::{HashMap, HashSet};
 
+use rand::seq::IndexedRandom;
 use serenity::{
     all::{
-        ChannelId, Context, CreateMessage, GuildId, GuildMemberUpdateEvent, Mentionable, RoleId,
-        UserId,
+        ChannelId, Context, CreateMessage, GuildId, GuildMemberUpdateEvent, Mention, Mentionable,
+        RoleId, UserId,
     },
     prelude::TypeMapKey,
 };
+
+/// each message has 2 strings, one goes before the user mention, one goes after
+const WELCOME_MESSAGES: [[&str; 2]; 3] = [
+    ["Welcome, ", "!"],
+    ["Glad you're here ", "."],
+    ["Hello ", ", welcome aboard!"],
+];
 
 // collection to keep track of members without the verified role
 pub struct UnverifiedMemberCollection;
@@ -64,7 +72,7 @@ pub async fn welcome_verified_member(
 
     if is_unverified && member_has_role {
         remove_member(&ctx, event.guild_id, event.user.id).await;
-        let welcome_message = format!("Welcome, {}!", event.user.mention());
+        let welcome_message = build_welcome_message(event.user.mention());
         let _ = welcome_channel_id
             .send_message(&ctx.http, CreateMessage::new().content(welcome_message))
             .await;
@@ -103,4 +111,10 @@ pub async fn populate_unverified_members(ctx: &Context, verified_role_id: &RoleI
             global_unverified_members.insert(guild.id, unverified_guild_members);
         }
     }
+}
+
+/// build a welcome message, choosing one at random
+fn build_welcome_message(user_name: Mention) -> String {
+    let [start, end] = WELCOME_MESSAGES.choose(&mut rand::rng()).unwrap();
+    format!("{}{}{}", start, user_name, end)
 }
