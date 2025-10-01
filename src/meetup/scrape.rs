@@ -1,11 +1,10 @@
 //! src/meetup/scrape.rs
 #![allow(unused)]
 
-use std::{collections::HashMap, fmt::format, hash::Hash};
+use std::collections::HashMap;
 
 use scraper::{Html, Selector};
-use serde_json::{Value, from_str};
-use serenity::json;
+use serde_json::{Map, Value, from_str};
 
 use crate::meetup::structure::{Event, FieldType, Member};
 
@@ -74,6 +73,30 @@ impl MeetupManager<Populated> {
     fn update_one(&mut self, group: &str) {
         let json = &self.fetch_json(group).unwrap();
         &self.groups_json.insert(group.to_string(), json.to_string());
+    }
+
+    /// gets the props map containing all events, members, groups, venues, etc.
+    /// This function is specific to the meetup JSON data scraped from
+    /// their web page. If they change the structure, this will no longer work.
+    fn isolate_props(&self, group: &str) -> Map<String, Value> {
+        let json = &self.groups_json.get(group).unwrap();
+        let json_map = serde_json::from_str::<HashMap<String, Value>>(json).unwrap();
+        let props = json_map
+            .get("props")
+            .expect("Could not find `props` field.")
+            .get("pageProps")
+            .expect("Could not find `pageProps` field.")
+            .get("__APOLLO_STATE__")
+            .expect("Could not find `__APOLLO_STATE__` field.");
+        props
+            .as_object()
+            .expect("The JSON `Value` found is not an object.")
+            .to_owned()
+    }
+
+    /// get all upcoming events in a given meetup group
+    pub fn get_events(&self, group: &str) -> Vec<Event> {
+        todo!()
     }
 }
 
