@@ -2,14 +2,18 @@
 #![allow(unused)]
 #![allow(non_snake_case)]
 
-use core::error;
+use serde::Deserialize;
 use std::collections::BTreeMap;
 
-use serde::Deserialize;
-use serde_json::Value;
+pub enum FieldType {
+    Event(Event),
+    Member(Member),
+    PhotoInfo(PhotoInfo),
+    Venue(Venue),
+}
 
 #[derive(Deserialize)]
-struct MeetupEvents {
+pub struct MeetupEvents {
     events: BTreeMap<String, Event>,
 }
 
@@ -17,14 +21,14 @@ struct MeetupEvents {
 /// a ref points to a specific meetup field,
 /// eg. `Member:123456789`, `Event:123456789`, `Venue:123456789`
 #[derive(Deserialize)]
-struct SubRef {
+pub struct SubRef {
     __ref: String,
 }
 
 /// used to comply with meetup json data structure.
 /// contains the id of a member, eg. `123456789`
 #[derive(Deserialize)]
-struct SubMember {
+pub struct SubMember {
     __typename: String,
     memberId: String,
 }
@@ -33,7 +37,7 @@ struct SubMember {
 /// meetup uses this to count the number of events or members
 /// where needed
 #[derive(Deserialize)]
-struct SubCount {
+pub struct SubCount {
     __typename: String,
     totalCount: usize,
 }
@@ -41,7 +45,7 @@ struct SubCount {
 /// data structure matching meetup `Event:` field
 /// eg. `Event:123456789`
 #[derive(Deserialize)]
-struct Event {
+pub struct Event {
     __typename: String,
     id: String,
     title: String,
@@ -62,7 +66,7 @@ struct Event {
 /// data structure matching meetup `Venue:` field
 /// eg. `Venue:123456789`
 #[derive(Deserialize)]
-struct Venue {
+pub struct Venue {
     __typename: String,
     id: String,
     name: String,
@@ -75,7 +79,7 @@ struct Venue {
 /// data structure matching meetup `Member:` field
 /// eg. `Member:123456789`
 #[derive(Deserialize)]
-struct Member {
+pub struct Member {
     __typename: String,
     id: String,
     name: String,
@@ -85,7 +89,7 @@ struct Member {
 /// data structure matching meetup `PhotoInfo:` field
 /// eg. `PhotoInfo:123456789`
 #[derive(Deserialize)]
-struct PhotoInfo {
+pub struct PhotoInfo {
     __typename: String,
     id: String,
     highResUrl: String,
