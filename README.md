@@ -14,6 +14,9 @@
 
 ## Usage
 
+This project is designed to be run on a debian-based linux server, and is therefore being tested
+only on a debian-based linux machine for the moment.
+
 ### Create the app
 
 Create a new discord application [here](https://discord.com/developers/applications).
