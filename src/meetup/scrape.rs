@@ -15,21 +15,12 @@ const MEETUP_START_URL: &str = "https://meetup.com/";
 const MEETUP_END_URL: &str = "/events/?type=upcoming";
 const WATCHED_GROUPS: [&str; 2] = ["gwinnett-hangouts", "roswell-and-alpharetta-20s-30s"];
 
-/// NOTE: Should I even have implemented populated/unpopulated??
-/// Does not seem needed. Also seems to add extra steps.
-///
-/// used to define a `MeetupManager` as having meetup data
-pub struct Populated;
-/// used to define a `MeetupManager` as not having any meetup data
-pub struct Unpopulated;
-
 /// Manage scraped meetup data
 #[derive(Debug, Clone)]
-pub struct MeetupManager<State = Unpopulated> {
+pub struct MeetupManager {
     // TODO: make separate `Events`, `Members`, etc. section?
     groups_json: HashMap<String, String>,
     watched_groups: Vec<String>,
-    state: std::marker::PhantomData<State>,
 }
 
 impl MeetupManager {
@@ -37,40 +28,18 @@ impl MeetupManager {
         MeetupManager {
             groups_json: HashMap::default(),
             watched_groups: Vec::from(WATCHED_GROUPS.map(|g| g.to_owned())),
-            state: Default::default(),
-        }
-    }
-}
-
-/// methods available to an unpopulated `MeetupManager`
-impl MeetupManager<Unpopulated> {
-    /// populates `MeetupManager` with meetup data
-    pub fn populate(self) -> MeetupManager<Populated> {
-        MeetupManager {
-            groups_json: self.populate_group_json(),
-            watched_groups: self.watched_groups,
-            state: std::marker::PhantomData::<Populated>,
         }
     }
 
-    /// populates the json for all meetup groups
-    fn populate_group_json(&self) -> HashMap<String, String> {
+    /// populates the json for all meetup groups. If json for a group
+    /// already exists, it will be overwritten with the new json.
+    pub fn populate(&self) -> HashMap<String, String> {
         let mut groups = HashMap::new();
         for group in self.watched_groups.clone().iter() {
             let json = &self.fetch_json(group).unwrap();
             groups.insert(group.to_owned(), json.to_string());
         }
         groups
-    }
-}
-
-/// methods available to a populated `MeetupManager`
-impl MeetupManager<Populated> {
-    /// replaces all json for all meetup groups
-    pub fn update_all(&mut self) {
-        for group in self.watched_groups.clone().iter() {
-            &self.update_one(group);
-        }
     }
 
     /// replaces the json for a specific meetup group
@@ -128,10 +97,7 @@ impl MeetupManager<Populated> {
     pub fn get_events(&self, group: &str) -> Vec<Event> {
         todo!()
     }
-}
 
-/// methods available to any `MeetupManager`
-impl<State> MeetupManager<State> {
     /// fetches the JSON data containing meetup events for a particular group
     /// given the URL for that groups upcoming events page
     fn fetch_json(&self, group: &str) -> Result<String, Box<dyn std::error::Error>> {
