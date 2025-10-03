@@ -99,6 +99,8 @@ pub struct SubCount {
     totalCount: usize,
 }
 
+// TODO: create deserialize rules for all sub objects: `SubRef`, `SubMember`, etc.
+
 /// allows serde to deserialize a string with assumed datetime format
 /// `RFC 3339` directly into `chrono::Datetime<chrono::FixedOffset>>`
 /// NOTE: All dates found in the meetup data is in `RFC 3339` format

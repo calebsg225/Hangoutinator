@@ -34,6 +34,8 @@ In the `SCOPES` panel, toggle the following:
 
 A `BOT PERMISSIONS` panel will appear below. Toggle the following from this panel:
  - `Send Messages`
+ - `Create Events`
+ - `Manage Events`
 
 Scroll to the bottom of the page. Go to the URL generated and follow the prompts.
 
