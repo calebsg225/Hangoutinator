@@ -2,7 +2,8 @@
 #![allow(unused)]
 #![allow(non_snake_case)]
 
-use serde::Deserialize;
+use chrono::{DateTime, FixedOffset};
+use serde::{Deserialize, Deserializer, de};
 use std::collections::BTreeMap;
 
 pub enum FieldType {
@@ -17,8 +18,64 @@ pub struct MeetupEvents {
     events: BTreeMap<String, Event>,
 }
 
+/// data structure matching meetup `Event:` prop
+/// eg. `Event:123456789`
+#[derive(Deserialize)]
+pub struct Event {
+    __typename: String,
+    id: String,
+    title: String,
+    eventUrl: String,
+    description: String,
+    group: SubRef,
+    creatorMember: SubRef,
+    eventHosts: Vec<SubMember>,
+    venue: SubRef, // points to `Venue:` prop
+    #[serde(deserialize_with = "datetime_fixed_offset_from_str")]
+    dateTime: DateTime<FixedOffset>,
+    #[serde(deserialize_with = "datetime_fixed_offset_from_str")]
+    createdTime: DateTime<FixedOffset>,
+    #[serde(deserialize_with = "datetime_fixed_offset_from_str")]
+    endTime: DateTime<FixedOffset>,
+    going: SubCount,            // rsvp count
+    featuredEventPhoto: SubRef, // points to `PhotoInfo:` prop
+    rsvpState: String,
+}
+
+/// data structure matching meetup `Venue:` prop
+/// eg. `Venue:123456789`
+#[derive(Deserialize)]
+pub struct Venue {
+    __typename: String,
+    id: String,
+    name: String,
+    address: String,
+    city: String,
+    state: String,
+    country: String,
+}
+
+/// data structure matching meetup `Member:` prop
+/// eg. `Member:123456789`
+#[derive(Deserialize)]
+pub struct Member {
+    __typename: String,
+    id: String,
+    name: String,
+    memberPhoto: SubRef, // ref points to a meetup 'PhotoInfo:' prop
+}
+
+/// data structure matching meetup `PhotoInfo:` prop
+/// eg. `PhotoInfo:123456789`
+#[derive(Deserialize)]
+pub struct PhotoInfo {
+    __typename: String,
+    id: String,
+    highResUrl: String,
+}
+
 /// used to comply with meetup json data structure.
-/// a ref points to a specific meetup field,
+/// a ref points to a specific meetup prop,
 /// eg. `Member:123456789`, `Event:123456789`, `Venue:123456789`
 #[derive(Deserialize)]
 pub struct SubRef {
@@ -42,55 +99,15 @@ pub struct SubCount {
     totalCount: usize,
 }
 
-/// data structure matching meetup `Event:` field
-/// eg. `Event:123456789`
-#[derive(Deserialize)]
-pub struct Event {
-    __typename: String,
-    id: String,
-    title: String,
-    eventUrl: String,
-    description: String,
-    group: SubRef,
-    creatorMember: SubRef,
-    eventHosts: Vec<SubMember>,
-    venue: SubRef,       // ref points to a meetup `Venue:` field
-    dateTime: String,    // convert to date
-    createdTime: String, // convert to date
-    endTime: String,     // convert to date
-    going: SubCount,     // rsvp count
-    featuredEventPhoto: SubRef,
-    rsvpState: String,
-}
-
-/// data structure matching meetup `Venue:` field
-/// eg. `Venue:123456789`
-#[derive(Deserialize)]
-pub struct Venue {
-    __typename: String,
-    id: String,
-    name: String,
-    address: String,
-    city: String,
-    state: String,
-    country: String,
-}
-
-/// data structure matching meetup `Member:` field
-/// eg. `Member:123456789`
-#[derive(Deserialize)]
-pub struct Member {
-    __typename: String,
-    id: String,
-    name: String,
-    memberPhoto: SubRef, // ref points to a meetup 'PhotoInfo:' field
-}
-
-/// data structure matching meetup `PhotoInfo:` field
-/// eg. `PhotoInfo:123456789`
-#[derive(Deserialize)]
-pub struct PhotoInfo {
-    __typename: String,
-    id: String,
-    highResUrl: String,
+/// allows serde to deserialize a string with assumed datetime format
+/// `RFC 3339` directly into `chrono::Datetime<chrono::FixedOffset>>`
+/// NOTE: All dates found in the meetup data is in `RFC 3339` format
+fn datetime_fixed_offset_from_str<'de, D>(
+    deserializer: D,
+) -> Result<DateTime<FixedOffset>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+    DateTime::parse_from_rfc3339(&s).map_err(de::Error::custom)
 }

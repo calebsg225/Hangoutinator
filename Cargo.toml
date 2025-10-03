@@ -5,8 +5,9 @@ authors = ["calebsg225 calebsg2253284@gmail.com"]
 edition = "2024"
 
 [dependencies]
-rand = "0.9.2"
 dotenv = "0.15"
+rand = "0.9.2"
+chrono = "0.4.42"
 scraper = "0.24.0"
 reqwest = {version = "0.12.23", features = ["blocking"]}
 serde = {version = "1.0.228", features = ["derive"]}
