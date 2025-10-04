@@ -14,6 +14,7 @@ use serenity::{
 mod features;
 mod meetup;
 
+use features::event_manager;
 use features::welcome_role;
 
 struct Handler;
@@ -114,6 +115,7 @@ async fn main() {
         .event_handler(Handler)
         .status(OnlineStatus::Idle)
         .type_map_insert::<welcome_role::UnverifiedMemberCollection>(HashMap::default())
+        .type_map_insert::<event_manager::DiscordEventSchedulerCollection>(HashMap::default())
         .await
         .expect("Err creating client");
 

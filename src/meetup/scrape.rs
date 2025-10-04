@@ -13,6 +13,8 @@ use crate::meetup::structure::{Event, FieldType, Member, PhotoInfo, Venue};
 // a db needs to be used.
 const MEETUP_START_URL: &str = "https://meetup.com/";
 const MEETUP_END_URL: &str = "/events/?type=upcoming";
+// TODO: For multi-guild support, use a db to store which meetup groups to watch. As it stands,
+// every guild will watch these groups.
 const WATCHED_GROUPS: [&str; 2] = ["gwinnett-hangouts", "roswell-and-alpharetta-20s-30s"];
 
 /// Manage scraped meetup data
@@ -33,13 +35,11 @@ impl MeetupManager {
 
     /// populates the json for all meetup groups. If json for a group
     /// already exists, it will be overwritten with the new json.
-    pub fn populate(&self) -> HashMap<String, String> {
-        let mut groups = HashMap::new();
+    pub fn populate(&mut self) {
         for group in self.watched_groups.clone().iter() {
             let json = &self.fetch_json(group).unwrap();
-            groups.insert(group.to_owned(), json.to_string());
+            &self.groups_json.insert(group.to_owned(), json.to_string());
         }
-        groups
     }
 
     /// replaces the json for a specific meetup group

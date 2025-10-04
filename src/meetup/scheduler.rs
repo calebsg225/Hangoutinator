@@ -1,38 +1,58 @@
 //! src/meetup/scheduler.rs
 #![allow(unused)]
 
+use std::collections::HashMap;
+
 use chrono::TimeDelta;
 use serenity::all::{CreateScheduledEvent, ScheduledEventType, Timestamp};
 
 use crate::meetup::scrape::MeetupManager;
 
-const ONE_HOUR: TimeDelta = TimeDelta::hours(1);
-const ONE_DAY: TimeDelta = TimeDelta::days(1);
+// TODO: For multi-guild support, use a db to store interval choices. As it stands, every guild
+// will use these intervals.
+
+/// the amount of time between meetup/discord event syncing
+const UPDATE_ALL_INTERVAL: TimeDelta = TimeDelta::days(1);
+/// the amount of time to wait after a meetup event is created before
+/// adding the event to discord
+const DELAY_POST_INTERVAL: TimeDelta = TimeDelta::hours(1);
 
 /// syncs meetup events and discord events
 pub struct DiscordEventScheduler {
     meetup_manager: MeetupManager,
+    discord_events: Vec<String>,
 }
 
 impl DiscordEventScheduler {
     pub fn new() -> DiscordEventScheduler {
         let scheduler = Self {
             meetup_manager: MeetupManager::new(),
+            discord_events: Vec::new(),
         };
         scheduler
     }
 
+    /// abstract away initial discord event creation
+    /// TODO: create direct conversion from custom `Event` type?
     fn create_event_builder() {
-        CreateScheduledEvent::new(
+        let base = CreateScheduledEvent::new(
             ScheduledEventType::External,
             "todo",
             Timestamp::parse("todo").unwrap(),
         );
         todo!();
     }
-    fn update_event_builder() {
-        todo!();
-    }
+
+    // function to start the timer
+    // inside the timer: every x hours:
+    // - pull new meetup data
+    // - check for meetup events not on discord
+    // - if any, add new events to discord (or set to be added after 1 hr)
+    // - update all other existing events with new data??
+
+    /// used to get all existing discord events from a guild
+    fn fetch_existing_discord_events() {}
+
     fn delete_event() {
         todo!();
     }
