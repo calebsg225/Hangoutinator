@@ -12,6 +12,7 @@ use serenity::{
 };
 
 mod features;
+mod helper;
 mod meetup;
 
 use features::event_manager;
