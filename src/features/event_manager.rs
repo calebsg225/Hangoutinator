@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use serenity::{
-    all::{Context, GuildId},
+    all::{Context, GuildId, ScheduledEvent, ScheduledEventStatus},
     prelude::TypeMapKey,
 };
 
@@ -29,7 +29,15 @@ pub async fn populate_discord_events(ctx: &Context) {
     // NOTE: This loop exists twice atm, could be more in the future.
     // TODO: Combine the two loops.
     for guild in active_guilds.iter() {
-        let events = helper::fetch_all_guild_events(&ctx, guild.id).await;
+        let events = helper::fetch_all_guild_events(&ctx, guild.id)
+            .await
+            .iter()
+            .filter_map(|event| match event.status {
+                ScheduledEventStatus::Scheduled => Some(event.to_owned()),
+                ScheduledEventStatus::Active => Some(event.to_owned()),
+                _ => None,
+            })
+            .collect::<Vec<ScheduledEvent>>();
 
         event_scheduler_collection.insert(guild.id, DiscordEventScheduler::from(events));
     }
