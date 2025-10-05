@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use chrono::TimeDelta;
-use serenity::all::{CreateScheduledEvent, ScheduledEventType, Timestamp};
+use serenity::all::{CreateScheduledEvent, ScheduledEvent, ScheduledEventType, Timestamp};
 
 use crate::meetup::scrape::MeetupManager;
 
@@ -20,16 +20,22 @@ const DELAY_POST_INTERVAL: TimeDelta = TimeDelta::hours(1);
 /// syncs meetup events and discord events
 pub struct DiscordEventScheduler {
     meetup_manager: MeetupManager,
-    discord_events: Vec<String>,
+    discord_events: Vec<ScheduledEvent>,
 }
 
 impl DiscordEventScheduler {
     pub fn new() -> DiscordEventScheduler {
-        let scheduler = Self {
+        Self {
             meetup_manager: MeetupManager::new(),
             discord_events: Vec::new(),
-        };
-        scheduler
+        }
+    }
+
+    pub fn from(events: Vec<ScheduledEvent>) -> DiscordEventScheduler {
+        Self {
+            meetup_manager: MeetupManager::new(),
+            discord_events: events,
+        }
     }
 
     /// abstract away initial discord event creation

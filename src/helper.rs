@@ -1,6 +1,6 @@
 //! src/helper.rs
 
-use serenity::all::{Context, GuildInfo, Member};
+use serenity::all::{Context, GuildId, GuildInfo, Member, ScheduledEvent};
 
 /// fetch guilds the bot is in
 /// NOTE: Further steps required to retrieve more than 100 guilds.
@@ -11,10 +11,18 @@ pub async fn fetch_all_active_guilds(ctx: &Context) -> Vec<GuildInfo> {
         .expect("Could not fetch active guilds.")
 }
 
+/// NOTE: Further steps required to retrieve more than 1000 members.
 pub async fn fetch_all_guild_members(ctx: &Context, guild: &GuildInfo) -> Vec<Member> {
     guild
         .id
         .members(&ctx.http, None, None)
         .await
         .expect("Could not fetch guild members.")
+}
+
+pub async fn fetch_all_guild_events(ctx: &Context, guild_id: GuildId) -> Vec<ScheduledEvent> {
+    ctx.http
+        .get_scheduled_events(guild_id, false)
+        .await
+        .expect("Could not fetch scheduled events.")
 }
