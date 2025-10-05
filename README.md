@@ -11,6 +11,7 @@
     - [Other useful commands](#other-useful-commands)
 - [Features](#features)
     - [Welcoming Verified Members](#welcoming-verified-members)
+    - [Managing Event Syncing](#managing-event-syncing)
 
 ## Usage
 
@@ -77,3 +78,13 @@ The bot should now be running.
 TODO: make commands for selecting roles and channels for this feature from discord
 
 ** does not yet support mutliple guilds
+
+### Managing Event Syncing
+
+Hangoutinator pulls meetup.com events from user-selected meetup.com groups and posts those events in a discord server.
+
+- Syncing of all events will take place once every `24hrs`.
+- If a meetup.com event is less than 1 hour old, the event will not immediatly be posted. Instead, once the event is 1 hour old,
+it will be re-fetched from meetup.com, then finally posted as a discord event.
+
+TODO: make commands for manually

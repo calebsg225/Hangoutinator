@@ -56,9 +56,6 @@ impl DiscordEventScheduler {
     // - if any, add new events to discord (or set to be added after 1 hr)
     // - update all other existing events with new data??
 
-    /// used to get all existing discord events from a guild
-    fn fetch_existing_discord_events() {}
-
     fn delete_event() {
         todo!();
     }
