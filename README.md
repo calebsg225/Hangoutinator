@@ -36,6 +36,7 @@ A `BOT PERMISSIONS` panel will appear below. Toggle the following from this pane
  - `Send Messages`
  - `Create Events`
  - `Manage Events`
+ - `View Channels`
 
 Scroll to the bottom of the page. Go to the URL generated and follow the prompts.
 
