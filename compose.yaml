@@ -1,0 +1,22 @@
+services:
+  #bot:
+  #  build: .
+  #  image: hangbot-ps
+  #  restart: always
+  #  TODO: deal with unpredictable postgres local ip (if needed)
+
+  database:
+    image: postgres
+    restart: always
+    ports:
+      - ${PGPORT}:5432
+    environment:
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_USER: ${PGUSER}
+
+  # database visualization tool
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 6969:8080
