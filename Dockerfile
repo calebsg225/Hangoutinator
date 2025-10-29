@@ -16,6 +16,11 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # copy all files from working environment to our docker image
 COPY . .
+# explicitly copy over .sqlx querys
+COPY ./.sqlx ./.sqlx
+
+# force usage of prepared .sqlx queries when building
+ENV SQLX_OFFLINE=true
 
 # build the project
 RUN cargo build --release --bin hangoutinator

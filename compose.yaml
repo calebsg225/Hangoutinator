@@ -1,9 +1,13 @@
 services:
-  #bot:
-  #  build: .
-  #  image: hangbot-ps
-  #  restart: always
-  #  TODO: deal with unpredictable postgres local ip (if needed)
+  bot:
+    build: .
+    image: hangbot-ps
+    restart: always
+    env_file: ./.env
+    depends_on:
+      database:
+        condition: service_healthy
+        restart: true
 
   database:
     image: postgres
@@ -14,6 +18,12 @@ services:
       POSTGRES_PASSWORD: ${PGPASSWORD}
       POSTGRES_USER: ${PGUSER}
       POSTGRES_DB: ${PGDATABASE}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER} -d ${PGDATABASE}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
 
   # database visualization tool
   adminer:
