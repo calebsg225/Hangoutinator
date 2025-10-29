@@ -1,12 +1,13 @@
 //! src/main.rs
 
+use std::fmt::Write as _;
 use std::{collections::HashMap, env};
 
 use serenity::{
     Client,
     all::{
         ChannelId, Context, EventHandler, GatewayIntents, GuildId, GuildMemberUpdateEvent, Member,
-        OnlineStatus, Ready, RoleId, User,
+        Message, OnlineStatus, Ready, RoleId, User,
     },
     async_trait,
 };
@@ -18,10 +19,65 @@ mod meetup;
 use features::event_manager;
 use features::welcome_role;
 
-struct Handler;
+struct Handler {
+    db_connection: sqlx::PgPool,
+}
 
 #[async_trait]
 impl EventHandler for Handler {
+    async fn message(&self, ctx: Context, msg: Message) {
+        let user_id = msg.author.id.get() as i32;
+
+        if let Some(task_description) = msg.content.strip_prefix("~todo add") {
+            let m = format!("Todo add...");
+            msg.channel_id.say(&ctx, m).await.unwrap();
+            let task_description = task_description.trim();
+            sqlx::query!(
+                "INSERT INTO todo (task, user_id, t) VALUES ($1, $2, $3)",
+                task_description,
+                user_id,
+                chrono::Utc::now(),
+            )
+            .execute(&self.db_connection)
+            .await
+            .unwrap();
+
+            let res = format!("Successfully added `{task_description}` to your todo list.");
+            msg.channel_id.say(&ctx, res).await.unwrap();
+        } else if let Some(task_index) = msg.content.strip_prefix("~todo remove") {
+            let m = format!("Todo remove...");
+            msg.channel_id.say(&ctx, m).await.unwrap();
+            let task_index = task_index.trim().parse::<i64>().unwrap() - 1;
+            let entry = sqlx::query!(
+                "SELECT t, task FROM todo WHERE user_id = $1 ORDER BY t LIMIT 1 OFFSET $2",
+                user_id,
+                task_index,
+            )
+            .fetch_one(&self.db_connection)
+            .await
+            .unwrap();
+
+            sqlx::query!("DELETE FROM todo WHERE t = $1", entry.t)
+                .execute(&self.db_connection)
+                .await
+                .unwrap();
+
+            let res = format!("Successfully removed `{}` to your todo list.", entry.task);
+            msg.channel_id.say(&ctx, res).await.unwrap();
+        } else if msg.content.trim() == "~todo list" {
+            let todos = sqlx::query!("SELECT * FROM todo WHERE user_id = $1 ORDER BY t", user_id)
+                .fetch_all(&self.db_connection)
+                .await
+                .unwrap();
+
+            let mut res = format!("You have {} pending tasks:\n", todos.len());
+            for (i, todo) in todos.iter().enumerate() {
+                writeln!(res, "{} - {}", i + 1, todo.task).unwrap();
+            }
+            msg.channel_id.say(&ctx, res).await.unwrap();
+        }
+    }
+
     async fn guild_member_update(
         &self,
         ctx: Context,
@@ -108,12 +164,31 @@ async fn main() {
 
     let token = env::var("TOKEN").expect("Expected a token in the environment.");
 
+    // make database
+    let connection = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(5)
+        .connect_with(
+            sqlx::postgres::PgConnectOptions::new()
+                .host("database")
+                .username("postgres")
+                .password("foobar")
+                .port(5432),
+        )
+        .await
+        .expect("Could not connect to database.");
+
     // `GUILD_MEMBERS` used to detect role assignment/reassignment
-    let intents = GatewayIntents::GUILD_MEMBERS;
+    let intents = GatewayIntents::GUILD_MEMBERS
+        | GatewayIntents::MESSAGE_CONTENT
+        | GatewayIntents::GUILD_MESSAGES;
+
+    let handler = Handler {
+        db_connection: connection,
+    };
 
     // build client
     let mut client = Client::builder(&token, intents)
-        .event_handler(Handler)
+        .event_handler(handler)
         .status(OnlineStatus::Idle)
         .type_map_insert::<welcome_role::UnverifiedMemberCollection>(HashMap::default())
         .type_map_insert::<event_manager::DiscordEventSchedulerCollection>(HashMap::default())
