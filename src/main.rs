@@ -164,7 +164,8 @@ async fn main() {
 
     let token = env::var("TOKEN").expect("Expected a token in the environment.");
 
-    // make database
+    // connect to database
+    // TODO: pull db from env?
     let connection = sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)
         .connect_with(
