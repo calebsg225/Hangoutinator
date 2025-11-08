@@ -10,7 +10,9 @@ CREATE TABLE todo (
 CREATE TABLE meetupEvents (
 	id uuid NOT NULL,
 	PRIMARY KEY (id),
-	eventId TEXT NOT NULL UNIQUE,
+	meetupEventId TEXT NOT NULL UNIQUE,
+	-- NOTE: the discord event id may not be unique due to duplicates
+	discordEventId TEXT NOT NULL,
 	-- the meetup groups the event belongs to
 	meetupGroupId uuid NOT NULL,
 	eventHash binary(128) NOT NULL,

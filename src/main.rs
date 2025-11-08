@@ -85,13 +85,14 @@ impl EventHandler for Handler {
         _new: Option<Member>, // can't get cache to work...
         event: GuildMemberUpdateEvent,
     ) {
-        // NOTE: Storing the channel id and role id in .env will only work for a single guild.
+        // TODO: store and pull from db
         let verified_role_id: RoleId = RoleId::from(
             env::var("VERIFIED_ROLE_ID")
                 .expect("Expected a verified role id in the environment.")
                 .parse::<u64>()
                 .unwrap(),
         );
+        // TODO: store and pull from db
         let welcome_channel_id: ChannelId = ChannelId::from(
             env::var("WELCOME_CHANNEL_ID")
                 .expect("Expected a welcome channel id in the environment.")
@@ -139,7 +140,7 @@ impl EventHandler for Handler {
 
     /// runs when the bot is ready
     async fn ready(&self, ctx: Context, ready: Ready) {
-        // NOTE: Not compatable with more than a single guild.
+        // TODO: store and pull from db
         let verified_role_id: RoleId = RoleId::from(
             env::var("VERIFIED_ROLE_ID")
                 .expect("Expected a verified role id in the environment.")
@@ -165,7 +166,7 @@ async fn main() {
     let token = env::var("TOKEN").expect("Expected a token in the environment.");
 
     // connect to database
-    // TODO: pull db from env?
+    // TODO: pull db data from env?
     let connection = sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)
         .connect_with(
