@@ -11,8 +11,6 @@ CREATE TABLE meetupEvents (
 	id uuid NOT NULL,
 	PRIMARY KEY (id),
 	meetupEventId TEXT NOT NULL UNIQUE,
-	-- NOTE: the discord event id may not be unique due to duplicates
-	discordEventId TEXT NOT NULL,
 	-- the meetup groups the event belongs to
 	meetupGroupId uuid NOT NULL,
 	eventHash binary(128) NOT NULL,
@@ -20,6 +18,13 @@ CREATE TABLE meetupEvents (
 	duplicateEventHash binary(64) NOT NULL,
 	-- keep track of end time to be removed from db
 	endTime timestamptz NOT NULL,
+);
+
+-- all discord events from all guilds bot is active in
+CREATE TABLE discordEvents (
+	id uuid NOT NULL,
+	PRIMARY KEY (id),
+	discordEventId binary(32) NOT NULL UNIQUE,
 );
 
 -- meetup groups to keep track of
@@ -46,4 +51,11 @@ CREATE TABLE meetupGroupsGuilds (
 	PRIMARY KEY (id),
 	guildId uuid NOT NULL,
 	meetupGroupId uuid NOT NULL,
+);
+
+-- Create 'linker' table between `discordEvents` and `meetupEvents` tables
+CREATE TABLE discordEventsMeetupEvents (
+	id uuid NOT NULL,
+	discordEventId uuid NOT NULL,
+	meetupEventId uuid NOT NULL,
 );
