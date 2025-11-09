@@ -7,55 +7,56 @@ CREATE TABLE todo (
 );
 
 -- individual meetup group events
-CREATE TABLE meetupEvents (
+CREATE TABLE meetup_events (
 	id uuid NOT NULL,
 	PRIMARY KEY (id),
-	meetupEventId TEXT NOT NULL UNIQUE,
+	meetup_event_id TEXT NOT NULL UNIQUE,
 	-- the meetup groups the event belongs to
-	meetupGroupId uuid NOT NULL,
-	eventHash binary(128) NOT NULL,
+	meetup_group_id uuid NOT NULL,
+	event_hash TEXT NOT NULL,
 	-- keep track of duplicate events across meetup groups
-	duplicateEventHash binary(64) NOT NULL,
+	duplicate_event_hash TEXT NOT NULL,
 	-- keep track of end time to be removed from db
-	endTime timestamptz NOT NULL,
+	end_time timestamptz NOT NULL
 );
 
 -- all discord events from all guilds bot is active in
-CREATE TABLE discordEvents (
+CREATE TABLE discord_events (
 	id uuid NOT NULL,
 	PRIMARY KEY (id),
-	discordEventId binary(32) NOT NULL UNIQUE,
+	discord_event_id NUMERIC(20) NOT NULL UNIQUE
 );
 
 -- meetup groups to keep track of
-CREATE TABLE meetupGroups (
+CREATE TABLE meetup_groups (
 	id uuid NOT NULL,
 	PRIMARY KEY (id),
-	groupName TEXT NOT NULL UNIQUE,
-	groupId binary(16),
+	group_name TEXT NOT NULL UNIQUE,
+	group_id NUMERIC(10)
 );
 
 -- discord guild information
 CREATE TABLE guilds (
 	id uuid NOT NULL,
 	PRIMARY KEY (id),
-	guildId binary(32) NOT NULL UNIQUE,
-	welcomeRoleId binary(32) NOT NULL,
-	welcomeChannelId binary(32) NOT NULL,
-	adminRoleId binary(32) NOT NULL,
+	guild_id NUMERIC(20) NOT NULL UNIQUE,
+	welcome_role_id NUMERIC(22),
+	welcome_channel_id NUMERIC(20),
+	admin_role_id NUMERIC(22)
 );
 
--- Create 'linker' table between `meetupGroups` and `guilds` tables
-CREATE TABLE meetupGroupsGuilds (
+-- Create 'linker' table between `meetup_groups` and `guilds` tables
+CREATE TABLE meetup_groups_guilds (
 	id uuid NOT NULL,
 	PRIMARY KEY (id),
-	guildId uuid NOT NULL,
-	meetupGroupId uuid NOT NULL,
+	guild_id uuid NOT NULL,
+	meetup_group_id uuid NOT NULL
 );
 
--- Create 'linker' table between `discordEvents` and `meetupEvents` tables
-CREATE TABLE discordEventsMeetupEvents (
+-- Create 'linker' table between `discord_events` and `meetup_events` tables
+CREATE TABLE discord_events_meetup_events (
 	id uuid NOT NULL,
-	discordEventId uuid NOT NULL,
-	meetupEventId uuid NOT NULL,
+	PRIMARY KEY (id),
+	discord_event_id uuid NOT NULL,
+	meetup_event_id uuid NOT NULL
 );
