@@ -28,7 +28,11 @@ impl TypeMapKey for UnverifiedMemberCollection {
 }
 
 /// Checks if `UnverifiedMemberCollection` contains a specific member in a specific guild
-async fn is_unverified_member(ctx: &Context, guild_id: GuildId, user_id: UserId) -> bool {
+async fn is_unverified_member(
+    ctx: &Context,
+    guild_id: GuildId,
+    user_id: UserId,
+) -> Result<bool, Box<dyn std::error::Error>> {
     let data = ctx.data.write().await;
     // TODO: deal with these fucking unwrap()s!!
     let unverified_members = data
@@ -36,28 +40,36 @@ async fn is_unverified_member(ctx: &Context, guild_id: GuildId, user_id: UserId)
         .unwrap()
         .get(&guild_id)
         .unwrap();
-    return unverified_members.contains(&user_id);
+    Ok(unverified_members.contains(&user_id))
 }
 
 /// Removes a verified member from `UnverifiedMembersCollection`
-pub async fn remove_member(ctx: &Context, guild_id: GuildId, user_id: UserId) -> bool {
+pub async fn remove_member(
+    ctx: &Context,
+    guild_id: GuildId,
+    user_id: UserId,
+) -> Result<bool, Box<dyn std::error::Error>> {
     let mut data = ctx.data.write().await;
     let unverified_members = data
         .get_mut::<UnverifiedMemberCollection>()
         .unwrap()
         .get_mut(&guild_id)
         .unwrap();
-    unverified_members.remove(&user_id)
+    Ok(unverified_members.remove(&user_id))
 }
 
-pub async fn add_member(ctx: &Context, guild_id: GuildId, user_id: UserId) -> bool {
+pub async fn add_member(
+    ctx: &Context,
+    guild_id: GuildId,
+    user_id: UserId,
+) -> Result<bool, Box<dyn std::error::Error>> {
     let mut data = ctx.data.write().await;
     let unverified_members = data
         .get_mut::<UnverifiedMemberCollection>()
         .unwrap()
         .get_mut(&guild_id)
         .unwrap();
-    unverified_members.insert(user_id)
+    Ok(unverified_members.insert(user_id))
 }
 
 /// checks if a member has been verified. If so, sends a welcome message.
@@ -66,20 +78,21 @@ pub async fn welcome_verified_member(
     event: &GuildMemberUpdateEvent,
     verified_role_id: &RoleId,
     welcome_channel_id: &ChannelId,
-) {
+) -> Result<(), Box<dyn std::error::Error>> {
     // check that the member is in `UnverifiedMemberCollection`.
-    let is_unverified = is_unverified_member(&ctx, event.guild_id, event.user.id).await;
+    let is_unverified = is_unverified_member(&ctx, event.guild_id, event.user.id).await?;
     // check that the member has the role.
     let member_has_role = event.roles.contains(&verified_role_id);
 
     if is_unverified && member_has_role {
-        remove_member(&ctx, event.guild_id, event.user.id).await;
+        remove_member(&ctx, event.guild_id, event.user.id).await?;
         let welcome_message = build_welcome_message(event.user.mention());
         let _ = welcome_channel_id
             .send_message(&ctx.http, CreateMessage::new().content(welcome_message))
             .await;
         println!("Member `{}` has been welcomed.", event.user.name);
     }
+    Ok(())
 }
 
 /// populates the `UnverifiedMemberCollection` collection on `client.data` with unverified members

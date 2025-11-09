@@ -84,7 +84,7 @@ impl EventHandler for Handler {
         _old: Option<Member>, // can't get cache to work...
         _new: Option<Member>, // can't get cache to work...
         event: GuildMemberUpdateEvent,
-    ) {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // TODO: store and pull from db
         let verified_role_id: RoleId = RoleId::from(
             env::var("VERIFIED_ROLE_ID")
@@ -103,11 +103,16 @@ impl EventHandler for Handler {
         println!("A guild member update has occured.");
 
         welcome_role::welcome_verified_member(&ctx, &event, &verified_role_id, &welcome_channel_id)
-            .await;
+            .await?;
+        Ok(())
     }
 
     /// runs when a member joins a guild
-    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
+    async fn guild_member_addition(
+        &self,
+        ctx: Context,
+        new_member: Member,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let guild_id = new_member.guild_id;
         let user_id = new_member.user.id;
 
@@ -118,7 +123,8 @@ impl EventHandler for Handler {
 
         // when a member joins a guild, attempt to add them
         // to `UnverifiedMemberCollection`
-        welcome_role::add_member(&ctx, guild_id, user_id).await;
+        welcome_role::add_member(&ctx, guild_id, user_id).await?;
+        Ok(())
     }
 
     async fn guild_member_removal(
@@ -127,7 +133,7 @@ impl EventHandler for Handler {
         guild_id: GuildId,
         user: User,
         _member_data: Option<Member>,
-    ) {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         println!(
             "Member with id {} has been removed from guild with id {}.",
             &guild_id, &user.id
@@ -135,7 +141,8 @@ impl EventHandler for Handler {
 
         // when a member leaves a guild, attempt to remove them
         // from `UnverifiedMemberCollection`
-        welcome_role::remove_member(&ctx, guild_id, user.id).await;
+        welcome_role::remove_member(&ctx, guild_id, user.id).await?;
+        Ok(())
     }
 
     /// runs when the bot is ready
