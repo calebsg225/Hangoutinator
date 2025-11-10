@@ -20,7 +20,7 @@ use features::event_manager;
 use features::welcome_role;
 
 struct Handler {
-    db_connection: sqlx::PgPool,
+    db_pool: sqlx::PgPool,
 }
 
 #[async_trait]
@@ -38,7 +38,7 @@ impl EventHandler for Handler {
                 user_id,
                 chrono::Utc::now(),
             )
-            .execute(&self.db_connection)
+            .execute(&self.db_pool)
             .await
             .unwrap();
 
@@ -53,12 +53,12 @@ impl EventHandler for Handler {
                 user_id,
                 task_index,
             )
-            .fetch_one(&self.db_connection)
+            .fetch_one(&self.db_pool)
             .await
             .unwrap();
 
             sqlx::query!("DELETE FROM todo WHERE t = $1", entry.t)
-                .execute(&self.db_connection)
+                .execute(&self.db_pool)
                 .await
                 .unwrap();
 
@@ -66,7 +66,7 @@ impl EventHandler for Handler {
             msg.channel_id.say(&ctx, res).await.unwrap();
         } else if msg.content.trim() == "~todo list" {
             let todos = sqlx::query!("SELECT * FROM todo WHERE user_id = $1 ORDER BY t", user_id)
-                .fetch_all(&self.db_connection)
+                .fetch_all(&self.db_pool)
                 .await
                 .unwrap();
 
@@ -84,7 +84,7 @@ impl EventHandler for Handler {
         _old: Option<Member>, // can't get cache to work...
         _new: Option<Member>, // can't get cache to work...
         event: GuildMemberUpdateEvent,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) {
         // TODO: store and pull from db
         let verified_role_id: RoleId = RoleId::from(
             env::var("VERIFIED_ROLE_ID")
@@ -102,17 +102,17 @@ impl EventHandler for Handler {
 
         println!("A guild member update has occured.");
 
-        welcome_role::welcome_verified_member(&ctx, &event, &verified_role_id, &welcome_channel_id)
-            .await?;
-        Ok(())
+        let _ = welcome_role::welcome_verified_member(
+            &ctx,
+            &event,
+            &verified_role_id,
+            &welcome_channel_id,
+        )
+        .await;
     }
 
     /// runs when a member joins a guild
-    async fn guild_member_addition(
-        &self,
-        ctx: Context,
-        new_member: Member,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
         let guild_id = new_member.guild_id;
         let user_id = new_member.user.id;
 
@@ -123,8 +123,7 @@ impl EventHandler for Handler {
 
         // when a member joins a guild, attempt to add them
         // to `UnverifiedMemberCollection`
-        welcome_role::add_member(&ctx, guild_id, user_id).await?;
-        Ok(())
+        let _ = welcome_role::add_member(&ctx, guild_id, user_id).await;
     }
 
     async fn guild_member_removal(
@@ -133,7 +132,7 @@ impl EventHandler for Handler {
         guild_id: GuildId,
         user: User,
         _member_data: Option<Member>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) {
         println!(
             "Member with id {} has been removed from guild with id {}.",
             &guild_id, &user.id
@@ -141,8 +140,7 @@ impl EventHandler for Handler {
 
         // when a member leaves a guild, attempt to remove them
         // from `UnverifiedMemberCollection`
-        welcome_role::remove_member(&ctx, guild_id, user.id).await?;
-        Ok(())
+        let _ = welcome_role::remove_member(&ctx, guild_id, user.id).await;
     }
 
     /// runs when the bot is ready
@@ -174,7 +172,7 @@ async fn main() {
 
     // connect to database
     // TODO: pull db data from env?
-    let connection = sqlx::postgres::PgPoolOptions::new()
+    let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)
         .connect_with(
             sqlx::postgres::PgConnectOptions::new()
@@ -191,18 +189,15 @@ async fn main() {
         | GatewayIntents::MESSAGE_CONTENT
         | GatewayIntents::GUILD_MESSAGES;
 
-    let handler = Handler {
-        db_connection: connection,
-    };
+    let handler = Handler { db_pool: pool };
 
     // build client
     let mut client = Client::builder(&token, intents)
         .event_handler(handler)
         .status(OnlineStatus::Idle)
         .type_map_insert::<welcome_role::UnverifiedMemberCollection>(HashMap::default())
-        .type_map_insert::<event_manager::DiscordEventSchedulerCollection>(HashMap::default())
         .await
-        .expect("Err creating client");
+        .expect("Could not create client");
 
     // TODO: start a scheduler to handle event updates
 
