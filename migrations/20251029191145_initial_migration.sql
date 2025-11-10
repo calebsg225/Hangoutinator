@@ -8,11 +8,10 @@ CREATE TABLE todo (
 
 -- individual meetup group events
 CREATE TABLE meetup_events (
-	id uuid NOT NULL,
-	PRIMARY KEY (id),
-	meetup_event_id TEXT NOT NULL UNIQUE,
+	meetup_event_id NUMERIC(12) NOT NULL UNIQUE,
+	PRIMARY KEY (meetup_event_id),
 	-- the meetup groups the event belongs to
-	meetup_group_id uuid NOT NULL,
+	meetup_group_id NUMERIC(12) NOT NULL,
 	event_hash TEXT NOT NULL,
 	-- keep track of duplicate events across meetup groups
 	duplicate_event_hash TEXT NOT NULL,
@@ -22,24 +21,21 @@ CREATE TABLE meetup_events (
 
 -- all discord events from all guilds bot is active in
 CREATE TABLE discord_events (
-	id uuid NOT NULL,
-	PRIMARY KEY (id),
-	discord_event_id NUMERIC(20) NOT NULL UNIQUE
+	discord_event_id NUMERIC(20) NOT NULL UNIQUE,
+	PRIMARY KEY (discord_event_id)
 );
 
 -- meetup groups to keep track of
 CREATE TABLE meetup_groups (
-	id uuid NOT NULL,
-	PRIMARY KEY (id),
-	group_name TEXT NOT NULL UNIQUE,
-	group_id NUMERIC(10)
+	group_id NUMERIC(12) NOT NULL UNIQUE,
+	PRIMARY KEY (group_id),
+	group_name TEXT NOT NULL UNIQUE
 );
 
 -- discord guild information
 CREATE TABLE guilds (
-	id uuid NOT NULL,
-	PRIMARY KEY (id),
 	guild_id NUMERIC(20) NOT NULL UNIQUE,
+	PRIMARY KEY (guild_id),
 	welcome_role_id NUMERIC(22),
 	welcome_channel_id NUMERIC(20),
 	admin_role_id NUMERIC(22)
@@ -47,16 +43,16 @@ CREATE TABLE guilds (
 
 -- Create 'linker' table between `meetup_groups` and `guilds` tables
 CREATE TABLE meetup_groups_guilds (
-	id uuid NOT NULL,
+	id uuid NOT NULL UNIQUE,
 	PRIMARY KEY (id),
-	guild_id uuid NOT NULL,
-	meetup_group_id uuid NOT NULL
+	guild_id NUMERIC(20) NOT NULL,
+	meetup_group_id NUMERIC(12) NOT NULL
 );
 
 -- Create 'linker' table between `discord_events` and `meetup_events` tables
 CREATE TABLE discord_events_meetup_events (
 	id uuid NOT NULL,
 	PRIMARY KEY (id),
-	discord_event_id uuid NOT NULL,
-	meetup_event_id uuid NOT NULL
+	discord_event_id NUMERIC(20) NOT NULL,
+	meetup_event_id NUMERIC(12) NOT NULL
 );
