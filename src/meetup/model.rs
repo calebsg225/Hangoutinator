@@ -1,4 +1,4 @@
-//! src/meetup/structure.rs
+//! src/meetup/model.rs
 #![allow(unused)]
 #![allow(non_snake_case)]
 

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use scraper::{Html, Selector};
 use serde_json::{Map, Value, from_str};
 
-use crate::meetup::structure::{Event, FieldType, Member, PhotoInfo, Venue};
+use crate::meetup::model::{Event, FieldType, Member, PhotoInfo, Venue};
 
 const MEETUP_START_URL: &str = "https://meetup.com/";
 const MEETUP_END_URL: &str = "/events/?type=upcoming";

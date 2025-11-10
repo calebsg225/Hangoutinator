@@ -1,5 +1,4 @@
 //! src/meetup/mod.rs
 
-pub mod scheduler;
+pub mod model;
 pub mod scrape;
-pub mod structure;
