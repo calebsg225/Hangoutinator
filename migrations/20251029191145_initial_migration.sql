@@ -43,7 +43,7 @@ CREATE TABLE guilds (
 
 -- Create 'linker' table between `meetup_groups` and `guilds` tables
 CREATE TABLE meetup_groups_guilds (
-	id uuid NOT NULL UNIQUE,
+	id NUMERIC(32) NOT NULL UNIQUE,
 	PRIMARY KEY (id),
 	guild_id NUMERIC(20) NOT NULL,
 	meetup_group_id NUMERIC(12) NOT NULL
@@ -51,7 +51,7 @@ CREATE TABLE meetup_groups_guilds (
 
 -- Create 'linker' table between `discord_events` and `meetup_events` tables
 CREATE TABLE discord_events_meetup_events (
-	id uuid NOT NULL,
+	id NUMERIC(32) NOT NULL UNIQUE,
 	PRIMARY KEY (id),
 	discord_event_id NUMERIC(20) NOT NULL,
 	meetup_event_id NUMERIC(12) NOT NULL
