@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO discord_events (discord_event_id)\n            VALUES ($1)\n            ON CONFLICT DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5e22e045b99c19ab65471605a7bd67c46dd1c501a278e495fd2c95b5c0534194"
+}
