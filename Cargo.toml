@@ -2,7 +2,7 @@
 name = "hangoutinator"
 version = "0.1.0"
 authors = ["calebsg225 calebsg2253284@gmail.com"]
-edition = "2025"
+edition = "2024"
 
 [dependencies]
 dotenv = "0.15"
