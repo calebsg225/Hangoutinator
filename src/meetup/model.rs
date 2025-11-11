@@ -13,28 +13,28 @@ use serde::{
 #[derive(Deserialize)]
 pub struct Event {
     __typename: String,
-    id: String, // id could be a string of characters instead of a string of digits
-    title: String,
-    eventUrl: String,
-    description: String,
+    pub id: String, // id could be a string of characters instead of a string of digits
+    pub title: String,
+    pub eventUrl: String,
+    pub description: String,
     #[serde(deserialize_with = "string_from_sub_ref")]
-    group: String, // points to `Group:` prop
+    pub group: String, // points to `Group:` prop
     #[serde(deserialize_with = "string_from_sub_ref")]
-    creatorMember: String, // points to `Member:` prop
+    pub creatorMember: String, // points to `Member:` prop
     #[serde(deserialize_with = "string_vec_from_sub_member_vec")]
-    eventHosts: Vec<String>,
+    pub eventHosts: Vec<String>,
     #[serde(deserialize_with = "string_from_sub_ref")]
-    venue: String, // points to `Venue:` prop
+    pub venue: String, // points to `Venue:` prop
     #[serde(deserialize_with = "datetime_fixed_offset_from_str")]
-    dateTime: DateTime<FixedOffset>,
+    pub dateTime: DateTime<FixedOffset>,
     #[serde(deserialize_with = "datetime_fixed_offset_from_str")]
-    createdTime: DateTime<FixedOffset>,
+    pub createdTime: DateTime<FixedOffset>,
     #[serde(deserialize_with = "datetime_fixed_offset_from_str")]
-    endTime: DateTime<FixedOffset>,
+    pub endTime: DateTime<FixedOffset>,
     #[serde(deserialize_with = "usize_from_sub_count")]
-    going: usize, // rsvp count
+    pub going: usize, // rsvp count
     #[serde(deserialize_with = "string_from_sub_ref")]
-    featuredEventPhoto: String, // points to `PhotoInfo:` prop
+    pub featuredEventPhoto: String, // points to `PhotoInfo:` prop
 }
 
 /// data structure matching meetup `Venue:` prop
@@ -42,12 +42,12 @@ pub struct Event {
 #[derive(Deserialize)]
 pub struct Venue {
     __typename: String,
-    id: String, // id could be a string of characters instead of a string of digits
-    name: String,
-    address: String,
-    city: String,
-    state: String,
-    country: String,
+    pub id: String, // id could be a string of characters instead of a string of digits
+    pub name: String,
+    pub address: String,
+    pub city: String,
+    pub state: String,
+    pub country: String,
 }
 
 /// data structure matching meetup `Member:` prop
@@ -55,10 +55,10 @@ pub struct Venue {
 #[derive(Deserialize)]
 pub struct Member {
     __typename: String,
-    id: String, // id could be a string of characters instead of a string of digits
-    name: String,
+    pub id: String, // id could be a string of characters instead of a string of digits
+    pub name: String,
     #[serde(deserialize_with = "string_from_sub_ref")]
-    memberPhoto: String, // ref points to a meetup 'PhotoInfo:' prop
+    pub memberPhoto: String, // ref points to a meetup 'PhotoInfo:' prop
 }
 
 /// data structure matching meetup `PhotoInfo:` prop
@@ -66,8 +66,8 @@ pub struct Member {
 #[derive(Deserialize)]
 pub struct PhotoInfo {
     __typename: String,
-    id: String, // id could be a string of characters instead of a string of digits
-    highResUrl: String,
+    pub id: String, // id could be a string of characters instead of a string of digits
+    pub highResUrl: String,
 }
 
 /// used to comply with meetup json data structure.
@@ -83,7 +83,7 @@ pub struct SubRef {
 #[derive(Deserialize)]
 pub struct SubMember {
     __typename: String,
-    memberId: String, // id could be a string of characters instead of a string of digits
+    pub memberId: String, // id could be a string of characters instead of a string of digits
 }
 
 /// used to comply with meetup json data structure.
@@ -92,7 +92,7 @@ pub struct SubMember {
 #[derive(Deserialize)]
 pub struct SubCount {
     __typename: String,
-    totalCount: usize,
+    pub totalCount: usize,
 }
 
 /// NOTE: The following functions remove excessive nesting in the meetup JSON

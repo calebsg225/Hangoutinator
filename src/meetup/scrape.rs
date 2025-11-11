@@ -29,12 +29,16 @@ pub struct MeetupGroupData {
 
 impl MeetupGroupData {
     fn from(json: Map<String, Value>) -> Self {
-        let meetup_data = Self {
+        let mut meetup_data = Self {
             events: extract_fields(&json, "Event:"),
             members: extract_fields(&json, "Member:"),
             photos: extract_fields(&json, "PhotoInfo:"),
             venues: extract_fields(&json, "Venue:"),
         };
+        // sort events by start date: earliest to latest
+        meetup_data
+            .events
+            .sort_by(|a, b| a.dateTime.cmp(&b.dateTime));
         meetup_data
     }
 }
