@@ -3,15 +3,10 @@
 #![allow(non_snake_case)]
 
 use chrono::{DateTime, FixedOffset};
-use serde::{Deserialize, Deserializer, de};
-use std::collections::BTreeMap;
-
-pub enum FieldType {
-    Event(Event),
-    Member(Member),
-    PhotoInfo(PhotoInfo),
-    Venue(Venue),
-}
+use serde::{
+    Deserialize, Deserializer,
+    de::{self},
+};
 
 /// data structure matching meetup `Event:` prop
 /// eg. `Event:123456789` or `Event:xilsndkxcksla`
@@ -152,7 +147,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use serde_json::from_str;
+    use serde_json::{from_str, from_value};
 
     use super::*;
 

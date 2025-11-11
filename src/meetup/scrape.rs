@@ -7,10 +7,11 @@
 #![allow(unused)]
 
 use scraper::{Html, Selector};
-use serde_json::{Map, Value};
+use serde::de::DeserializeOwned;
+use serde_json::{Map, Value, from_value};
 use std::collections::HashMap;
 
-use crate::meetup::model::{Event, FieldType, Member, PhotoInfo, Venue};
+use crate::meetup::model::{Event, Member, PhotoInfo, Venue};
 
 const MEETUP_START_URL: &str = "https://meetup.com/";
 const MEETUP_END_URL: &str = "/events/?type=upcoming";
@@ -18,6 +19,7 @@ const MEETUP_END_URL: &str = "/events/?type=upcoming";
 // TODO: remove this
 const WATCHED_GROUPS: [&str; 2] = ["gwinnett-hangouts", "roswell-and-alpharetta-20s-30s"];
 
+/// contains all relevant event(s) data from a meetup group
 pub struct MeetupGroupData {
     events: Vec<Event>,
     members: Vec<Member>,
@@ -26,22 +28,25 @@ pub struct MeetupGroupData {
 }
 
 impl MeetupGroupData {
-    fn from(json: &str) -> Self {
+    fn from(json: Map<String, Value>) -> Self {
         let meetup_data = Self {
-            events: Vec::new(),
-            members: Vec::new(),
-            photos: Vec::new(),
-            venues: Vec::new(),
+            events: extract_fields(&json, "Event:"),
+            members: extract_fields(&json, "Member:"),
+            photos: extract_fields(&json, "PhotoInfo:"),
+            venues: extract_fields(&json, "Venue:"),
         };
         meetup_data
     }
 }
 
+/// fetches JSON from a 'meetup.com' group, turns it into a
+/// rust-friendly data format (`MeetupGroupData`)
 pub fn get_meetup_group_data(
     group_name: &str,
 ) -> Result<MeetupGroupData, Box<dyn std::error::Error>> {
-    let group_json = fetch_json(group_name)?;
-    let meetup_group_data = MeetupGroupData::from(&group_json);
+    let json = fetch_json(group_name)?;
+    let group_json = isolate_props(&json).unwrap();
+    let meetup_group_data = MeetupGroupData::from(group_json);
     Ok(meetup_group_data)
 }
 
@@ -57,14 +62,16 @@ fn isolate_props(json: &str) -> Option<Map<String, Value>> {
 
 /// Extracts JSON `Value`s whos keys match a partial string.
 /// Used for dealing with ridiculously named JSON fields.
-fn extract_fields(props: &Map<String, Value>, partial: &str) -> Vec<Value> {
+fn extract_fields<T: DeserializeOwned>(props: &Map<String, Value>, partial: &str) -> Vec<T> {
     props
         .iter()
         .filter_map(|(k, v)| match k.find(partial) {
-            Some(_) => Some(v.to_owned()),
+            Some(_) => {
+                Some(from_value::<T>(v.to_owned()).expect("Could not convert `Value` to type `T`"))
+            }
             _ => None,
         })
-        .collect::<Vec<Value>>()
+        .collect::<Vec<T>>()
 }
 
 /// fetches the JSON data containing meetup events for a particular group
