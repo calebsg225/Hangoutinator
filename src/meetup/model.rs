@@ -4,6 +4,7 @@
 
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Deserializer, de};
+use serde_with::{DisplayFromStr, serde_as};
 use std::collections::BTreeMap;
 
 pub enum FieldType {
@@ -20,10 +21,11 @@ pub struct MeetupEvents {
 
 /// data structure matching meetup `Event:` prop
 /// eg. `Event:123456789`
+#[serde_as]
 #[derive(Deserialize)]
 pub struct Event {
     __typename: String,
-    #[serde(deserialize_with = "parse_from_str")]
+    #[serde_as(as = "DisplayFromStr")]
     id: u64,
     title: String,
     eventUrl: String,
@@ -50,10 +52,11 @@ pub struct Event {
 
 /// data structure matching meetup `Venue:` prop
 /// eg. `Venue:123456789`
+#[serde_as]
 #[derive(Deserialize)]
 pub struct Venue {
     __typename: String,
-    #[serde(deserialize_with = "parse_from_str")]
+    #[serde_as(as = "DisplayFromStr")]
     id: u64,
     name: String,
     address: String,
@@ -64,10 +67,11 @@ pub struct Venue {
 
 /// data structure matching meetup `Member:` prop
 /// eg. `Member:123456789`
+#[serde_as]
 #[derive(Deserialize)]
 pub struct Member {
     __typename: String,
-    #[serde(deserialize_with = "parse_from_str")]
+    #[serde_as(as = "DisplayFromStr")]
     id: u64,
     name: String,
     #[serde(deserialize_with = "string_from_sub_ref")]
@@ -76,10 +80,11 @@ pub struct Member {
 
 /// data structure matching meetup `PhotoInfo:` prop
 /// eg. `PhotoInfo:123456789`
+#[serde_as]
 #[derive(Deserialize)]
 pub struct PhotoInfo {
     __typename: String,
-    #[serde(deserialize_with = "parse_from_str")]
+    #[serde_as(as = "DisplayFromStr")]
     id: u64,
     highResUrl: String,
 }
@@ -94,10 +99,11 @@ pub struct SubRef {
 
 /// used to comply with meetup json data structure.
 /// contains the id of a member, eg. `123456789`
+#[serde_as]
 #[derive(Deserialize)]
 pub struct SubMember {
     __typename: String,
-    #[serde(deserialize_with = "parse_from_str")]
+    #[serde_as(as = "DisplayFromStr")]
     memberId: u64,
 }
 
@@ -115,7 +121,7 @@ pub struct SubCount {
 
 /// allows serde to deserialize a string with assumed datetime format
 /// `RFC 3339` directly into `chrono::Datetime<chrono::FixedOffset>>`
-/// NOTE: All dates found in the meetup data is in `RFC 3339` format
+/// NOTE: All dates (currently) found in the meetup data are in `RFC 3339` format
 fn datetime_fixed_offset_from_str<'de, D>(
     deserializer: D,
 ) -> Result<DateTime<FixedOffset>, D::Error>
@@ -146,7 +152,7 @@ where
     Ok(sub_count.totalCount)
 }
 
-/// allows serde to deserialize a u64 vec from `SubMember` taken from the
+/// allows serde to deserialize a u64 vec from `Vec<SubMember>` taken from the
 /// JSON data
 fn u64_vec_from_sub_member_vec<'de, D>(deserializer: D) -> Result<Vec<u64>, D::Error>
 where
@@ -155,18 +161,6 @@ where
     let members: Vec<SubMember> = Deserialize::deserialize(deserializer)?;
     let members = members.iter().map(|m| m.memberId).collect::<Vec<u64>>();
     Ok(members)
-}
-
-/// allows serde to deserialize ints from strings taken from the JSON data
-fn parse_from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-where
-    D: Deserializer<'de>,
-    T: std::str::FromStr,
-    <T as std::str::FromStr>::Err: std::fmt::Display,
-{
-    Ok(String::deserialize(deserializer)?
-        .parse()
-        .map_err(de::Error::custom)?)
 }
 
 #[cfg(test)]
