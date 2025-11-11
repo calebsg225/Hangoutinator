@@ -21,10 +21,10 @@ const WATCHED_GROUPS: [&str; 2] = ["gwinnett-hangouts", "roswell-and-alpharetta-
 
 /// contains all relevant event(s) data from a meetup group
 pub struct MeetupGroupData {
-    pub events: Vec<Event>,
-    pub members: BTreeMap<String, Member>,
-    pub photos: BTreeMap<String, PhotoInfo>,
-    pub venues: BTreeMap<String, Venue>,
+    events: Vec<Event>,
+    members: BTreeMap<String, Member>,
+    photos: BTreeMap<String, PhotoInfo>,
+    venues: BTreeMap<String, Venue>,
 }
 
 impl MeetupGroupData {
@@ -36,6 +36,22 @@ impl MeetupGroupData {
             venues: extract_fields(&json, "Venue:"),
         };
         meetup_data
+    }
+    /// fetch a reference to stored meetup events
+    pub fn get_events(&self) -> &Vec<Event> {
+        &self.events
+    }
+    /// fetch a reference to stored meetup member
+    pub fn get_member(&self, id: &str) -> Option<&Member> {
+        self.members.get(id)
+    }
+    /// fetch a reference to stored meetup photoinfo
+    pub fn get_photoinfo(&self, id: &str) -> Option<&PhotoInfo> {
+        self.photos.get(id)
+    }
+    /// fetch a reference to stored meetup venue
+    pub fn get_venue(&self, id: &str) -> Option<&Venue> {
+        self.venues.get(id)
     }
 }
 
