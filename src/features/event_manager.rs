@@ -31,59 +31,6 @@ async fn sync_meetup_discord_events(pool: &sqlx::PgPool) {
     }
 }
 
-/// given a guild id, fetch all (active) discord events in that guild and
-/// attempt to populate the db, linking with meetup events as needed
-/// NOTE: I maybe shouldn't have made this. Providing this function implies the intention of
-/// recovering data after (partial or complete) sql data loss as opposed to a complete bot
-/// reset.
-async fn populate_discord_events_into_db(
-    ctx: &Context,
-    pool: &sqlx::PgPool,
-    guild_id: GuildId,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let existing_discord_events = ctx.http.get_scheduled_events(guild_id, false).await?;
-
-    let bot_id = ctx.http.application_id().unwrap().get();
-    for discord_event in existing_discord_events.iter() {
-        // filter out events not created by the bot
-        if discord_event.creator_id.unwrap().get() != bot_id {
-            continue;
-        }
-
-        let event_id = BigDecimal::from(discord_event.id.get());
-        let event_description = discord_event.description.as_ref().unwrap();
-
-        // if event not in db, add to db
-        sqlx::query!(
-            r#"
-            INSERT INTO discord_events (discord_event_id)
-            VALUES ($1)
-            ON CONFLICT DO NOTHING
-            "#,
-            event_id
-        )
-        .execute(pool)
-        .await?;
-
-        // populate linker table between discord events and meetup events
-        let meetup_event_ids = get_meetup_events_from_discord_event(&event_description);
-        for meetup_event_id in meetup_event_ids.iter() {
-            sqlx::query!(
-                r#"
-                INSERT INTO discord_events_meetup_events (discord_event_id, meetup_event_id)
-                VALUES ($1, $2)
-                ON CONFLICT DO NOTHING
-                "#,
-                event_id,
-                BigDecimal::from(meetup_event_id),
-            )
-            .execute(pool)
-            .await?;
-        }
-    }
-    Ok(())
-}
-
 /// parses a bot-created discord events' description for all associated meetup event(s) id(s).
 /// WARN: A predictable discord event description format must be used in order to successfully
 /// retrieve the desired data.
