@@ -4,7 +4,6 @@
 
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Deserializer, de};
-use serde_with::{DisplayFromStr, serde_as};
 use std::collections::BTreeMap;
 
 pub enum FieldType {
@@ -20,13 +19,11 @@ pub struct MeetupEvents {
 }
 
 /// data structure matching meetup `Event:` prop
-/// eg. `Event:123456789`
-#[serde_as]
+/// eg. `Event:123456789` or `Event:xilsndkxcksla`
 #[derive(Deserialize)]
 pub struct Event {
     __typename: String,
-    #[serde_as(as = "DisplayFromStr")]
-    id: u64,
+    id: String, // id could be a string of characters instead of a string of digits
     title: String,
     eventUrl: String,
     description: String,
@@ -34,8 +31,8 @@ pub struct Event {
     group: String, // points to `Group:` prop
     #[serde(deserialize_with = "string_from_sub_ref")]
     creatorMember: String, // points to `Member:` prop
-    #[serde(deserialize_with = "u64_vec_from_sub_member_vec")]
-    eventHosts: Vec<u64>,
+    #[serde(deserialize_with = "string_vec_from_sub_member_vec")]
+    eventHosts: Vec<String>,
     #[serde(deserialize_with = "string_from_sub_ref")]
     venue: String, // points to `Venue:` prop
     #[serde(deserialize_with = "datetime_fixed_offset_from_str")]
@@ -52,12 +49,10 @@ pub struct Event {
 
 /// data structure matching meetup `Venue:` prop
 /// eg. `Venue:123456789`
-#[serde_as]
 #[derive(Deserialize)]
 pub struct Venue {
     __typename: String,
-    #[serde_as(as = "DisplayFromStr")]
-    id: u64,
+    id: String, // id could be a string of characters instead of a string of digits
     name: String,
     address: String,
     city: String,
@@ -67,12 +62,10 @@ pub struct Venue {
 
 /// data structure matching meetup `Member:` prop
 /// eg. `Member:123456789`
-#[serde_as]
 #[derive(Deserialize)]
 pub struct Member {
     __typename: String,
-    #[serde_as(as = "DisplayFromStr")]
-    id: u64,
+    id: String, // id could be a string of characters instead of a string of digits
     name: String,
     #[serde(deserialize_with = "string_from_sub_ref")]
     memberPhoto: String, // ref points to a meetup 'PhotoInfo:' prop
@@ -80,12 +73,10 @@ pub struct Member {
 
 /// data structure matching meetup `PhotoInfo:` prop
 /// eg. `PhotoInfo:123456789`
-#[serde_as]
 #[derive(Deserialize)]
 pub struct PhotoInfo {
     __typename: String,
-    #[serde_as(as = "DisplayFromStr")]
-    id: u64,
+    id: String, // id could be a string of characters instead of a string of digits
     highResUrl: String,
 }
 
@@ -99,12 +90,10 @@ pub struct SubRef {
 
 /// used to comply with meetup json data structure.
 /// contains the id of a member, eg. `123456789`
-#[serde_as]
 #[derive(Deserialize)]
 pub struct SubMember {
     __typename: String,
-    #[serde_as(as = "DisplayFromStr")]
-    memberId: u64,
+    memberId: String, // id could be a string of characters instead of a string of digits
 }
 
 /// used to comply with meetup json data structure.
@@ -152,14 +141,17 @@ where
     Ok(sub_count.totalCount)
 }
 
-/// allows serde to deserialize a u64 vec from `Vec<SubMember>` taken from the
+/// allows serde to deserialize a `String` vec from `Vec<SubMember>` taken from the
 /// JSON data
-fn u64_vec_from_sub_member_vec<'de, D>(deserializer: D) -> Result<Vec<u64>, D::Error>
+fn string_vec_from_sub_member_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
 where
     D: Deserializer<'de>,
 {
     let members: Vec<SubMember> = Deserialize::deserialize(deserializer)?;
-    let members = members.iter().map(|m| m.memberId).collect::<Vec<u64>>();
+    let members = members
+        .iter()
+        .map(|m| m.memberId.clone())
+        .collect::<Vec<String>>();
     Ok(members)
 }
 
@@ -182,7 +174,7 @@ mod tests {
         }"#;
         let de_member =
             from_str::<Member>(sample_member).expect("Could not deserialize string into `Member`.");
-        assert_eq!(de_member.id, 123456789);
+        assert_eq!(de_member.id, "123456789");
         assert_eq!(de_member.memberPhoto, "PhotoInfo:123456789");
         assert_eq!(de_member.name, "John Doe");
     }
@@ -201,7 +193,7 @@ mod tests {
         }"#;
         let de_venue =
             from_str::<Venue>(sample_venue).expect("Could not deserialize string into `Venue`.");
-        assert_eq!(de_venue.id, 987654321);
+        assert_eq!(de_venue.id, "987654321");
         assert_eq!(de_venue.name, "Micky D's");
         assert_eq!(de_venue.address, "420 blvd");
         assert_eq!(de_venue.city, "Bill");
@@ -219,7 +211,7 @@ mod tests {
         }"#;
         let de_photo_info = from_str::<PhotoInfo>(sample_photo_info)
             .expect("Could not deserialize string into `PhotoInfo`.");
-        assert_eq!(de_photo_info.id, 000111222);
+        assert_eq!(de_photo_info.id, "000111222");
         assert_eq!(de_photo_info.highResUrl, "https://non.ya/business");
     }
 
@@ -264,7 +256,7 @@ mod tests {
         }"#;
         let de_event =
             from_str::<Event>(sample_event).expect("Could not deserialize string into `Event`.");
-        assert_eq!(de_event.id, 999888777);
+        assert_eq!(de_event.id, "999888777");
         assert_eq!(de_event.title, "IRS Audit");
         assert_eq!(de_event.group, "Group:90909090");
         assert_eq!(de_event.eventHosts.len(), 2);
