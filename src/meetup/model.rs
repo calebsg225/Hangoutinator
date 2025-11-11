@@ -13,11 +13,6 @@ pub enum FieldType {
     Venue(Venue),
 }
 
-#[derive(Deserialize)]
-pub struct MeetupEvents {
-    events: BTreeMap<String, Event>,
-}
-
 /// data structure matching meetup `Event:` prop
 /// eg. `Event:123456789` or `Event:xilsndkxcksla`
 #[derive(Deserialize)]

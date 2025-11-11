@@ -1,25 +1,41 @@
 //! src/features/event_manager.rs
 //! periodically pull meetup events and update discord events accordingly
 #![allow(unused)]
-use std::collections::HashMap;
 
-use chrono::TimeDelta;
-use serenity::{
-    all::{Context, GuildId, ScheduledEvent, Timestamp},
-    prelude::TypeMapKey,
-};
+use serenity::all::{Context, GuildId};
 use sqlx::types::BigDecimal;
 
-/// the amount of time between meetup/discord event syncing
-const UPDATE_ALL_INTERVAL: TimeDelta = TimeDelta::days(1);
-/// the amount of time to wait after a meetup event is created before
-/// adding the event to discord
-const DELAY_POST_INTERVAL: TimeDelta = TimeDelta::hours(1);
+use crate::meetup::scrape::{self, get_meetup_group_data};
+
+// set data to be refetched once every hour
+const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3600);
+
+pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(REFETCH_MEETUP_DATA_INTERVAL);
+        loop {
+            interval.tick().await;
+            // repeated task here...
+        }
+    });
+}
+
+async fn sync_meetup_discord_events(pool: &sqlx::PgPool) {
+    let groups = sqlx::query!("SELECT group_name FROM meetup_groups")
+        .fetch_all(pool)
+        .await
+        .unwrap();
+    for group in groups {
+        let group_data = scrape::get_meetup_group_data(&group.group_name);
+        // for each discord group...
+    }
+}
 
 /// given a guild id, fetch all (active) discord events in that guild and
 /// attempt to populate the db, linking with meetup events as needed
-///
-/// NOTE: This is to be run when the bot first starts
+/// NOTE: I maybe shouldn't have made this. Providing this function implies the intention of
+/// recovering data after (partial or complete) sql data loss as opposed to a complete bot
+/// reset.
 async fn populate_discord_events_into_db(
     ctx: &Context,
     pool: &sqlx::PgPool,
@@ -34,7 +50,7 @@ async fn populate_discord_events_into_db(
             continue;
         }
 
-        let event_id = discord_event.id.get();
+        let event_id = BigDecimal::from(discord_event.id.get());
         let event_description = discord_event.description.as_ref().unwrap();
 
         // if event not in db, add to db
@@ -44,7 +60,7 @@ async fn populate_discord_events_into_db(
             VALUES ($1)
             ON CONFLICT DO NOTHING
             "#,
-            BigDecimal::from(&event_id)
+            event_id
         )
         .execute(pool)
         .await?;
@@ -52,17 +68,13 @@ async fn populate_discord_events_into_db(
         // populate linker table between discord events and meetup events
         let meetup_event_ids = get_meetup_events_from_discord_event(&event_description);
         for meetup_event_id in meetup_event_ids.iter() {
-            let id: u128 = format!("${}${}", event_id, meetup_event_id)
-                .parse()
-                .unwrap();
             sqlx::query!(
                 r#"
-                INSERT INTO discord_events_meetup_events (id, discord_event_id, meetup_event_id)
-                VALUES ($1, $2, $3)
+                INSERT INTO discord_events_meetup_events (discord_event_id, meetup_event_id)
+                VALUES ($1, $2)
                 ON CONFLICT DO NOTHING
                 "#,
-                BigDecimal::from(id),
-                BigDecimal::from(event_id),
+                event_id,
                 BigDecimal::from(meetup_event_id),
             )
             .execute(pool)
@@ -80,17 +92,11 @@ fn get_meetup_events_from_discord_event(event_description: &str) -> Vec<u64> {
     todo!();
 }
 
-// on startup:
-//  - populate discord events
-//  - if authored by bot and not in db:
-//      - add to db
-//      - pull meetup event ids and add links to db if not exists
-
 // every hour:
 //  - pull meetup data
 //  - for each event:
 //      - if event not in db:
-//          - if event with duplicate id exists in db:
+//          - if event with duplicate hash exists in db:
 //              - update discord event
 //          - else:
 //              - add discord event (include meetup event ids for pairing)
@@ -105,8 +111,7 @@ fn get_meetup_events_from_discord_event(event_description: &str) -> Vec<u64> {
 #[cfg(test)]
 mod tests {
     use chrono::DateTime;
-
-    use super::*;
+    use serenity::all::Timestamp;
 
     /// mess around with timestamps
     #[test]
