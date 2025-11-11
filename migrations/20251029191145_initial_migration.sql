@@ -1,11 +1,3 @@
--- Add migration script here
--- Create Todo Table
-CREATE TABLE todo (
-	task TEXT NOT NULL,
-	user_id INTEGER NOT NULL,
-	t timestamptz NOT NULL
-);
-
 -- individual meetup group events
 CREATE TABLE meetup_events (
 	meetup_event_id VARCHAR(15) NOT NULL UNIQUE,
