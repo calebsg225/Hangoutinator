@@ -9,7 +9,7 @@
 use scraper::{Html, Selector};
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, from_value};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::meetup::model::{Event, Member, PhotoInfo, Venue};
 
@@ -21,25 +21,20 @@ const WATCHED_GROUPS: [&str; 2] = ["gwinnett-hangouts", "roswell-and-alpharetta-
 
 /// contains all relevant event(s) data from a meetup group
 pub struct MeetupGroupData {
-    events: Vec<Event>,
-    // TODO: store non-events as maps
-    members: Vec<Member>,
-    photos: Vec<PhotoInfo>,
-    venues: Vec<Venue>,
+    pub events: Vec<Event>,
+    pub members: BTreeMap<String, Member>,
+    pub photos: BTreeMap<String, PhotoInfo>,
+    pub venues: BTreeMap<String, Venue>,
 }
 
 impl MeetupGroupData {
     fn from(json: Map<String, Value>) -> Self {
         let mut meetup_data = Self {
-            events: extract_fields(&json, "Event:"),
+            events: extract_sorted_events(&json, "Event:"),
             members: extract_fields(&json, "Member:"),
             photos: extract_fields(&json, "PhotoInfo:"),
             venues: extract_fields(&json, "Venue:"),
         };
-        // sort events by start date: earliest to latest
-        meetup_data
-            .events
-            .sort_by(|a, b| a.dateTime.cmp(&b.dateTime));
         meetup_data
     }
 }
@@ -67,16 +62,31 @@ fn isolate_props(json: &str) -> Option<Map<String, Value>> {
 
 /// Extracts JSON `Value`s whos keys match a partial string.
 /// Used for dealing with ridiculously named JSON fields.
-fn extract_fields<T: DeserializeOwned>(props: &Map<String, Value>, partial: &str) -> Vec<T> {
+fn extract_fields<T: DeserializeOwned>(
+    props: &Map<String, Value>,
+    partial: &str,
+) -> BTreeMap<String, T> {
     props
         .iter()
         .filter_map(|(k, v)| match k.find(partial) {
-            Some(_) => {
-                Some(from_value::<T>(v.to_owned()).expect("Could not convert `Value` to type `T`"))
-            }
+            Some(_) => Some((
+                k.strip_prefix(partial).unwrap().to_owned(),
+                from_value::<T>(v.to_owned()).expect("Could not convert `Value` to type `T`"),
+            )),
             _ => None,
         })
-        .collect::<Vec<T>>()
+        .collect::<BTreeMap<String, T>>()
+}
+
+/// Extracts JSON `Event`s and sorts them by earliest date
+fn extract_sorted_events(props: &Map<String, Value>, partial: &str) -> Vec<Event> {
+    let mut events = extract_fields::<Event>(props, partial)
+        .iter()
+        .map(|(_, v)| v.clone())
+        .collect::<Vec<Event>>();
+    // sort meetup events by date (earliest first)
+    events.sort_by(|a, b| a.dateTime.cmp(&b.dateTime));
+    events
 }
 
 /// fetches the JSON data containing meetup events for a particular group

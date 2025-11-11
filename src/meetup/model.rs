@@ -10,7 +10,7 @@ use serde::{
 
 /// data structure matching meetup `Event:` prop
 /// eg. `Event:123456789` or `Event:xilsndkxcksla`
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Event {
     __typename: String,
     pub id: String, // id could be a string of characters instead of a string of digits
