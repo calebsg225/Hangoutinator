@@ -10,16 +10,20 @@ use crate::meetup::scrape::{self, get_meetup_group_data};
 // set data to be refetched once every hour
 const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3600);
 
+/// starts a background task for keeping discord events synced with
+/// meetup events
 pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
+    let pool1 = pool.clone();
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(REFETCH_MEETUP_DATA_INTERVAL);
         loop {
             interval.tick().await;
-            // repeated task here...
+            sync_meetup_discord_events(&pool1).await;
         }
     });
 }
 
+/// pulls meetup events for all groups, updates discord events as needed
 async fn sync_meetup_discord_events(pool: &sqlx::PgPool) {
     let groups = sqlx::query!("SELECT group_name FROM meetup_groups")
         .fetch_all(pool)

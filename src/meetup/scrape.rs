@@ -22,6 +22,7 @@ const WATCHED_GROUPS: [&str; 2] = ["gwinnett-hangouts", "roswell-and-alpharetta-
 /// contains all relevant event(s) data from a meetup group
 pub struct MeetupGroupData {
     events: Vec<Event>,
+    // TODO: store non-events as maps
     members: Vec<Member>,
     photos: Vec<PhotoInfo>,
     venues: Vec<Venue>,
