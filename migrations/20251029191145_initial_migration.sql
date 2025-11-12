@@ -20,7 +20,7 @@ CREATE TABLE discord_events (
 
 -- meetup groups to keep track of
 CREATE TABLE meetup_groups (
-	group_name VARCHAR(50) NOT NULL UNIQUE,
+	group_name VARCHAR(100) NOT NULL UNIQUE,
 	PRIMARY KEY (group_name)
 );
 
@@ -36,7 +36,7 @@ CREATE TABLE guilds (
 -- Create 'linker' table between `meetup_groups` and `guilds` tables
 CREATE TABLE meetup_groups_guilds (
 	guild_id NUMERIC(20) NOT NULL,
-	group_name VARCHAR(50) NOT NULL,
+	group_name VARCHAR(100) NOT NULL,
 	PRIMARY KEY (guild_id, group_name),
 	FOREIGN KEY (guild_id) REFERENCES guilds(guild_id) ON DELETE CASCADE,
 	FOREIGN KEY (group_name)  REFERENCES meetup_groups(group_name) ON DELETE CASCADE
