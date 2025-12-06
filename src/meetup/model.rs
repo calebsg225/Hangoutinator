@@ -11,7 +11,7 @@ use serde::{
 /// data structure matching meetup `Event:` prop
 /// eg. `Event:123456789` or `Event:xilsndkxcksla`
 #[derive(Deserialize, Clone)]
-pub struct Event {
+pub struct JSONEvent {
     __typename: String,
     pub id: String, // id could be a string of characters instead of a string of digits
     pub title: String,
@@ -39,8 +39,8 @@ pub struct Event {
 
 /// data structure matching meetup `Venue:` prop
 /// eg. `Venue:123456789`
-#[derive(Deserialize)]
-pub struct Venue {
+#[derive(Deserialize, Clone)]
+pub struct JSONVenue {
     __typename: String,
     pub id: String, // id could be a string of characters instead of a string of digits
     pub name: String,
@@ -50,10 +50,20 @@ pub struct Venue {
     pub country: String,
 }
 
+impl JSONVenue {
+    /// formats a location string from venue attributes
+    pub fn location(&self) -> String {
+        format!(
+            "{} {} {} {} {}",
+            self.name, self.address, self.city, self.state, self.country
+        )
+    }
+}
+
 /// data structure matching meetup `Member:` prop
 /// eg. `Member:123456789`
-#[derive(Deserialize)]
-pub struct Member {
+#[derive(Deserialize, Clone)]
+pub struct JSONMember {
     __typename: String,
     pub id: String, // id could be a string of characters instead of a string of digits
     pub name: String,
@@ -63,8 +73,8 @@ pub struct Member {
 
 /// data structure matching meetup `PhotoInfo:` prop
 /// eg. `PhotoInfo:123456789`
-#[derive(Deserialize)]
-pub struct PhotoInfo {
+#[derive(Deserialize, Clone)]
+pub struct JSONPhotoInfo {
     __typename: String,
     pub id: String, // id could be a string of characters instead of a string of digits
     pub highResUrl: String,
@@ -162,8 +172,8 @@ mod tests {
                 "__ref": "PhotoInfo:123456789"
             }
         }"#;
-        let de_member =
-            from_str::<Member>(sample_member).expect("Could not deserialize string into `Member`.");
+        let de_member = from_str::<JSONMember>(sample_member)
+            .expect("Could not deserialize string into `Member`.");
         assert_eq!(de_member.id, "123456789");
         assert_eq!(de_member.memberPhoto, "PhotoInfo:123456789");
         assert_eq!(de_member.name, "John Doe");
@@ -181,8 +191,8 @@ mod tests {
             "state": "Cosby",
             "country": "Mars"
         }"#;
-        let de_venue =
-            from_str::<Venue>(sample_venue).expect("Could not deserialize string into `Venue`.");
+        let de_venue = from_str::<JSONVenue>(sample_venue)
+            .expect("Could not deserialize string into `Venue`.");
         assert_eq!(de_venue.id, "987654321");
         assert_eq!(de_venue.name, "Micky D's");
         assert_eq!(de_venue.address, "420 blvd");
@@ -199,7 +209,7 @@ mod tests {
             "id": "000111222",
             "highResUrl": "https://non.ya/business"
         }"#;
-        let de_photo_info = from_str::<PhotoInfo>(sample_photo_info)
+        let de_photo_info = from_str::<JSONPhotoInfo>(sample_photo_info)
             .expect("Could not deserialize string into `PhotoInfo`.");
         assert_eq!(de_photo_info.id, "000111222");
         assert_eq!(de_photo_info.highResUrl, "https://non.ya/business");
@@ -244,8 +254,8 @@ mod tests {
                 "__ref": "PhotoInfo:141414141"
             }
         }"#;
-        let de_event =
-            from_str::<Event>(sample_event).expect("Could not deserialize string into `Event`.");
+        let de_event = from_str::<JSONEvent>(sample_event)
+            .expect("Could not deserialize string into `Event`.");
         assert_eq!(de_event.id, "999888777");
         assert_eq!(de_event.title, "IRS Audit");
         assert_eq!(de_event.group, "Group:90909090");
