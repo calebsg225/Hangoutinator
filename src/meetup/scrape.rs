@@ -10,7 +10,10 @@ use chrono::{DateTime, FixedOffset};
 use scraper::{Html, Selector};
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, from_value};
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash::{DefaultHasher, Hash, Hasher},
+};
 
 use crate::meetup::model::{JSONEvent, JSONMember, JSONPhotoInfo, JSONVenue};
 
@@ -60,6 +63,30 @@ impl MeetupEvent {
     }
     pub fn get_venue(&self, id: &str) -> Option<&JSONVenue> {
         self.venue.as_ref()
+    }
+
+    fn base_hasher<H: Hasher>(&self, state: &mut H) {
+        self.event.creatorMember.hash(state);
+        self.event.venue.hash(state);
+    }
+
+    /// generates a unique event hash
+    pub fn event_hash(&self) -> u64 {
+        let mut state = DefaultHasher::new();
+        self.base_hasher(&mut state);
+        self.event.title.hash(&mut state);
+        self.event.description.hash(&mut state);
+        self.event.dateTime.hash(&mut state);
+        self.event.endTime.hash(&mut state);
+        state.finish()
+    }
+
+    /// generates an event hash to identify duplicate events
+    pub fn duplicate_hash(&self) -> u64 {
+        let mut state = DefaultHasher::new();
+        self.base_hasher(&mut state);
+        // add start/end time(s) rounded to the day?
+        state.finish()
     }
 }
 

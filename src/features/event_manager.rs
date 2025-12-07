@@ -61,6 +61,8 @@ async fn sync_meetup_discord_events(
         for meetup_event in events {
             let event = meetup_event.get_event();
             let event_group_id = event.group.strip_prefix("Group:").unwrap();
+            let event_hash = meetup_event.event_hash();
+            let dup_hash = meetup_event.duplicate_hash();
             let existing_event = sqlx::query!(
                 "SELECT * FROM meetup_events WHERE meetup_event_id = $1",
                 event.id
@@ -79,8 +81,8 @@ async fn sync_meetup_discord_events(
                         "INSERT INTO meetup_events (meetup_event_id, meetup_group_id, event_hash, duplicate_event_hash, end_time) VALUES ($1, $2, $3, $4, $5)", 
                         event.id, 
                         BigDecimal::from(event_group_id.parse::<u64>().unwrap()),
-                        "", // TODO: hash
-                        "", // TODO: duplicate hash
+                        BigDecimal::from(event_hash), // TODO: hash
+                        BigDecimal::from(dup_hash), // TODO: duplicate hash
                         event.endTime
                     )
                     .execute(pool)
