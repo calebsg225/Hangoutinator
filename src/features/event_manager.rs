@@ -162,6 +162,7 @@ mod tests {
     use chrono::DateTime;
     use serenity::all::Timestamp;
     use sqlx::types::BigDecimal;
+    use std::hash::{DefaultHasher, Hash, Hasher};
 
     /// mess around with timestamps
     #[test]
@@ -176,10 +177,59 @@ mod tests {
         assert_eq!(timestamp.to_string(), utc_adjusted_rfc3339);
     }
 
+    /// mess around with big decimal
     #[test]
     fn u64_bigdecimal_conversions() {
         let num: u64 = 9824750932;
         let bd = BigDecimal::from(num);
         assert_eq!(num, bd.to_string().parse::<u64>().unwrap());
+    }
+
+    /// mess around with hashing
+    #[test]
+    fn hashing() {
+        struct Person {
+            id: u64,
+            name: String,
+            phone: u64,
+            is_dup: bool
+        }
+
+        impl Person {
+            fn shared_hash<H: Hasher>(&self, state: &mut H) {
+                self.id.hash(state);
+                self.phone.hash(state);
+            }
+            fn def_hash(&self) -> u64 {
+                let mut state = DefaultHasher::new();
+                self.shared_hash(&mut state);
+                state.finish()
+            }
+            fn dup_hash(&self) -> u64 {
+                let mut state = DefaultHasher::new();
+                self.shared_hash(&mut state);
+                self.is_dup.hash(&mut state);
+                state.finish()
+            }
+        }
+
+        let p1 = Person {
+            id: 5,
+            name: "John".to_string(),
+            phone: 555_666_7777,
+            is_dup: false,
+        };
+
+        let p2 = Person {
+            id: 5,
+            name: "John".to_string(),
+            phone: 555_666_7777,
+            is_dup: true,
+        };
+
+        assert_ne!(p1.def_hash(), p1.dup_hash());
+        assert_ne!(p2.def_hash(), p2.dup_hash());
+        assert_eq!(p1.def_hash(), p2.def_hash());
+        assert_ne!(p1.dup_hash(), p2.dup_hash());
     }
 }
