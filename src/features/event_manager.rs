@@ -3,8 +3,7 @@
 #![allow(unused)]
 
 use serenity::all::{
-    Builder, Context, CreateScheduledEvent, GuildId, ScheduledEvent, ScheduledEventId,
-    ScheduledEventType,
+    Builder, Context, CreateScheduledEvent, EditScheduledEvent, GuildId, ScheduledEvent, ScheduledEventId, ScheduledEventType
 };
 use sqlx::types::BigDecimal;
 
@@ -72,6 +71,39 @@ async fn sync_meetup_discord_events(
             match existing_event {
                 Some(r) => {
                     // event exists: check hashes
+                    // if no updates: skip
+                    if r.event_hash == BigDecimal::from(event_hash) {continue;}
+                    // get linked discord event
+                    let discord_events = sqlx::query!(
+                        r#"
+                            SELECT de.discord_event_id, de.guild_id
+                            FROM discord_events_meetup_events AS deme
+                            INNER JOIN discord_events AS de
+                            ON deme.discord_event_id = de.discord_event_id
+                            WHERE meetup_event_id = $1
+                        "#, 
+                        event.id
+                    ).fetch_all(pool).await?;
+                    // for each event, update
+                    for de in discord_events {
+                        let guild_id = GuildId::from(de.guild_id.to_string().parse::<u64>().unwrap());
+                        let event_id = ScheduledEventId::from(de.discord_event_id.to_string().parse::<u64>().unwrap());
+                        let edit_event_builder = EditScheduledEvent::from(&meetup_event);
+                        // edit discord event
+                        ctx.http.edit_scheduled_event(guild_id, event_id, &edit_event_builder, Some("sync with meetup.com event")).await?;
+                    }
+                    // update existing event in db with new data
+                    sqlx::query!(
+                        r#"
+                            UPDATE meetup_events
+                            SET event_hash = $1, duplicate_event_hash = $2, end_time = $3
+                            WHERE meetup_event_id = $4
+                        "#,
+                        BigDecimal::from(event_hash),
+                        BigDecimal::from(dup_hash),
+                        event.endTime,
+                        event.id
+                    ).execute(pool).await?;
                     // TODO: check for duplicates with hash
                 }
                 None => {
@@ -81,8 +113,8 @@ async fn sync_meetup_discord_events(
                         "INSERT INTO meetup_events (meetup_event_id, meetup_group_id, event_hash, duplicate_event_hash, end_time) VALUES ($1, $2, $3, $4, $5)", 
                         event.id, 
                         BigDecimal::from(event_group_id.parse::<u64>().unwrap()),
-                        BigDecimal::from(event_hash), // TODO: hash
-                        BigDecimal::from(dup_hash), // TODO: duplicate hash
+                        BigDecimal::from(event_hash),
+                        BigDecimal::from(dup_hash),
                         event.endTime
                     )
                     .execute(pool)
@@ -101,8 +133,9 @@ async fn sync_meetup_discord_events(
 
                         // add discord event id to db
                         sqlx::query!(
-                            "INSERT INTO discord_events (discord_event_id) VALUES ($1)",
-                            BigDecimal::from(discord_event.id.get())
+                            "INSERT INTO discord_events (discord_event_id, guild_id) VALUES ($1, $2)",
+                            BigDecimal::from(discord_event.id.get()),
+                            rec.guild_id,
                         )
                         .execute(pool)
                         .await?;
@@ -125,22 +158,6 @@ async fn sync_meetup_discord_events(
     Ok(())
 }
 
-// every hour:
-//  - pull meetup data
-//  - for each event:
-//      - if event not in db:
-//          - if event with duplicate hash exists in db:
-//              - update discord event
-//          - else:
-//              - add discord event (include meetup event ids for pairing)
-//          - insert event into db
-//          - STOP
-//      - if event in db but hash != hash: (meetup event changed)
-//          - update discord event
-//          - replace stored hash in db (and other required info)
-//          - STOP
-//      - if event in db and hash == hash: do nothing
-
 impl<'a> From<&MeetupEvent> for CreateScheduledEvent<'a> {
     fn from(v: &MeetupEvent) -> Self {
         let event = v.get_event();
@@ -150,6 +167,22 @@ impl<'a> From<&MeetupEvent> for CreateScheduledEvent<'a> {
             event.title.to_string(),
             event.dateTime,
         )
+        .description(event.description.to_string())
+        .end_time(event.endTime)
+        .location(match ven {
+            Some(v) => v.location(),
+            _ => String::new(),
+        })
+    }
+}
+
+impl<'a> From<&MeetupEvent> for EditScheduledEvent<'a> {
+    fn from(v: &MeetupEvent) -> Self {
+        let event = v.get_event();
+        let ven = v.get_venue(&event.venue);
+        EditScheduledEvent::new()
+        .name(event.title.to_string())
+        .start_time(event.dateTime)
         .description(event.description.to_string())
         .end_time(event.endTime)
         .location(match ven {
