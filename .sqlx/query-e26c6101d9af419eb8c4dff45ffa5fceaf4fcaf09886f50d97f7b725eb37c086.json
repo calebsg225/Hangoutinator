@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                            SELECT de.discord_event_id, de.guild_id\n                            FROM discord_events_meetup_events AS deme\n                            INNER JOIN discord_events AS de\n                            ON deme.discord_event_id = de.discord_event_id\n                            WHERE meetup_event_id = $1\n                        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "discord_event_id",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "guild_id",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "e26c6101d9af419eb8c4dff45ffa5fceaf4fcaf09886f50d97f7b725eb37c086"
+}

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                            UPDATE meetup_events\n                            SET event_hash = $1, duplicate_event_hash = $2, end_time = $3\n                            WHERE meetup_event_id = $4\n                        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Numeric",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "60c426fec5152f2705e0d401b68abd837bf73690db8a1740bb7dd8c2652cb811"
+}

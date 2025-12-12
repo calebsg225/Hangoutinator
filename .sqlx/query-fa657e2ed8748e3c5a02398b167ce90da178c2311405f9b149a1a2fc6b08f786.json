@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM meetup_events WHERE meetup_event_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "meetup_event_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "meetup_group_id",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "event_hash",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "duplicate_event_hash",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "end_time",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fa657e2ed8748e3c5a02398b167ce90da178c2311405f9b149a1a2fc6b08f786"
+}
