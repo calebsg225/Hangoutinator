@@ -8,8 +8,8 @@ use serenity::all::{
 use sqlx::types::BigDecimal;
 
 use crate::meetup::{
-    model::JSONVenue,
-    scrape::{self, MeetupEvent, get_meetup_group_data},
+    model::MeetupEvent,
+    scrape::{self, get_meetup_group_data},
 };
 
 // set data to be refetched once every hour
@@ -46,10 +46,12 @@ async fn sync_meetup_discord_events(
         .fetch_all(pool)
         .await?;
 
+        // if the current meetup group is not tracked by any guilds, don't bother
         if tracking_guilds.len() == 0 {
             continue;
         }
 
+        // scrape meetup site, aggregate into one struct
         let group_data = scrape::get_meetup_group_data(&group.group_name).unwrap();
         let events: Vec<MeetupEvent> = group_data.get_events();
         println!(
@@ -57,11 +59,9 @@ async fn sync_meetup_discord_events(
             events.len(),
             group.group_name
         );
-        for meetup_event in events {
-            let event = meetup_event.get_event();
-            let event_group_id = event.group.strip_prefix("Group:").unwrap();
-            let event_hash = meetup_event.event_hash();
-            let dup_hash = meetup_event.duplicate_hash();
+        for event in events {
+            let event_hash = event.generate_hash();
+            let dup_hash = event.generate_dup_hash();
             let existing_event = sqlx::query!(
                 "SELECT * FROM meetup_events WHERE meetup_event_id = $1",
                 event.id
@@ -88,7 +88,7 @@ async fn sync_meetup_discord_events(
                     for de in discord_events {
                         let guild_id = GuildId::from(de.guild_id.to_string().parse::<u64>().unwrap());
                         let event_id = ScheduledEventId::from(de.discord_event_id.to_string().parse::<u64>().unwrap());
-                        let edit_event_builder = EditScheduledEvent::from(&meetup_event);
+                        let edit_event_builder = EditScheduledEvent::from(&event);
                         // edit discord event
                         ctx.http.edit_scheduled_event(guild_id, event_id, &edit_event_builder, Some("sync with meetup.com event")).await?;
                     }
@@ -101,7 +101,7 @@ async fn sync_meetup_discord_events(
                         "#,
                         BigDecimal::from(event_hash),
                         BigDecimal::from(dup_hash),
-                        event.endTime,
+                        event.end_time,
                         event.id
                     ).execute(pool).await?;
                     // TODO: check for duplicates with hash
@@ -112,16 +112,18 @@ async fn sync_meetup_discord_events(
                     sqlx::query!(
                         "INSERT INTO meetup_events (meetup_event_id, meetup_group_id, event_hash, duplicate_event_hash, end_time) VALUES ($1, $2, $3, $4, $5)", 
                         event.id, 
-                        BigDecimal::from(event_group_id.parse::<u64>().unwrap()),
+                        // TODO: deal with cases where meetup event group id
+                        // is not an integer
+                        BigDecimal::from(event.group.id.parse::<u64>().unwrap()),
                         BigDecimal::from(event_hash),
                         BigDecimal::from(dup_hash),
-                        event.endTime
+                        event.end_time
                     )
                     .execute(pool)
                     .await?;
 
                     // add meetup event to all tracking discord guilds: save event id
-                    let discord_event_builder = CreateScheduledEvent::from(&meetup_event);
+                    let discord_event_builder = CreateScheduledEvent::from(&event);
                     for rec in tracking_guilds.iter() {
                         let discord_event = discord_event_builder
                             .clone()
@@ -144,7 +146,7 @@ async fn sync_meetup_discord_events(
                         sqlx::query!(
                         "INSERT INTO discord_events_meetup_events (discord_event_id, meetup_event_id) VALUES ($1, $2)",
                         BigDecimal::from(discord_event.id.get()),
-                        event_group_id
+                        event.group.id
 
                     )
                         .execute(pool)
@@ -159,36 +161,26 @@ async fn sync_meetup_discord_events(
 }
 
 impl<'a> From<&MeetupEvent> for CreateScheduledEvent<'a> {
-    fn from(v: &MeetupEvent) -> Self {
-        let event = v.get_event();
-        let ven = v.get_venue(&event.venue);
+    fn from(event: &MeetupEvent) -> Self {
         CreateScheduledEvent::new(
             ScheduledEventType::External,
             event.title.to_string(),
-            event.dateTime,
+            event.start_time,
         )
         .description(event.description.to_string())
-        .end_time(event.endTime)
-        .location(match ven {
-            Some(v) => v.location(),
-            _ => String::new(),
-        })
+        .end_time(event.end_time)
+        .location(event.venue.location.to_string())
     }
 }
 
 impl<'a> From<&MeetupEvent> for EditScheduledEvent<'a> {
-    fn from(v: &MeetupEvent) -> Self {
-        let event = v.get_event();
-        let ven = v.get_venue(&event.venue);
+    fn from(event: &MeetupEvent) -> Self {
         EditScheduledEvent::new()
         .name(event.title.to_string())
-        .start_time(event.dateTime)
+        .start_time(event.start_time)
         .description(event.description.to_string())
-        .end_time(event.endTime)
-        .location(match ven {
-            Some(v) => v.location(),
-            _ => String::new(),
-        })
+        .end_time(event.end_time)
+        .location(event.venue.location.to_string())
     }
 }
 
