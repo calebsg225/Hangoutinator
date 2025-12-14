@@ -46,6 +46,7 @@ impl MeetupEventBuilder {
     }
     /// get a 'raw' meetup member reference
     fn get_member(&self, id: &str) -> Option<&RawMember> {
+        println!("member id: {}", id);
         self.members.get(id)
     }
     /// get a 'raw' meetup photoinfo reference
@@ -225,7 +226,7 @@ impl Venue {
 /// 'raw' meetup member data, newly converted from the JSON
 /// data structure matching meetup `Member:` prop
 /// eg. `Member:123456789`
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 struct RawMember {
     pub id: String, // id could be a string of characters instead of a string of digits
     pub name: String,
@@ -335,7 +336,8 @@ fn extract_fields<T: DeserializeOwned>(
         .iter()
         .filter_map(|(k, v)| match k.find(partial) {
             Some(_) => Some((
-                k.strip_prefix(partial).unwrap().to_owned(),
+                //k.strip_prefix(partial).unwrap().to_owned(),
+                k.to_owned(),
                 from_value::<T>(v.to_owned()).expect("Could not convert `Value` to type `T`"),
             )),
             _ => None,
@@ -399,7 +401,7 @@ where
     let members: Vec<SubMember> = Deserialize::deserialize(deserializer)?;
     let members = members
         .iter()
-        .map(|m| m.member_id.clone())
+        .map(|m| format!("Member:{}", m.member_id.clone()))
         .collect::<Vec<String>>();
     Ok(members)
 }
