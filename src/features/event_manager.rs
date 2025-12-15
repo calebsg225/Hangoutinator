@@ -25,12 +25,11 @@ pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
     println!("scheduler spawned");
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(REFETCH_MEETUP_DATA_INTERVAL);
-        let mut c = 0;
         loop {
             interval.tick().await;
-            c += 1;
-            println!("running : {}", c);
-            sync_meetup_discord_events(&ctx1, &pool1).await.unwrap();
+            if let Err(e) = sync_meetup_discord_events(&ctx1, &pool1).await {
+                println!("Cound not sync events. Error: {}", e);
+            }
         }
     });
 }
@@ -68,11 +67,13 @@ async fn sync_meetup_discord_events(
             group.group_name
         );
         for event in events {
+            let event_id = event.id.clone();
+            println!("Syncing event with id `{}`...", event_id);
             let event_hash = event.generate_hash();
             let dup_hash = event.generate_dup_hash();
             let existing_event = sqlx::query!(
                 "SELECT * FROM meetup_events WHERE meetup_event_id = $1",
-                event.id
+                event_id
             )
             .fetch_optional(pool)
             .await?;
@@ -83,22 +84,38 @@ async fn sync_meetup_discord_events(
                     if record.event_hash == BigDecimal::from(event_hash) {
                         continue;
                     }
-                    resync_tracked_meetup_event(event, pool, ctx).await?;
+                    if let Err(e) = resync_tracked_meetup_event(event, pool, ctx).await {
+                        println!(
+                            "Could resync tracked meetup event with id `{}`. Error: {}",
+                            event_id, e
+                        );
+                    };
                 }
                 None => {
                     // This meetup event is not being tracked: track it.
-                    sync_untracked_meetup_event(
+                    if let Err(e) = sync_untracked_meetup_event(
                         event,
                         tracking_guilds.iter().map(|r| r.guild_id.clone()).collect(),
                         pool,
                         ctx,
                     )
-                    .await?;
+                    .await
+                    {
+                        println!(
+                            "Could sync untracked meetup event with id `{}`. Error: {}",
+                            event_id, e
+                        );
+                    };
                 }
             };
+            println!("Syncing process complete for event with id `{}`.", event_id);
         }
-        println!("Events synced.");
+        println!(
+            "Syncing complete for events in meetup group `{}`.",
+            group.group_name
+        );
     }
+    println!("Syncing complete for all tracked meetup groups.");
     Ok(())
 }
 

@@ -46,7 +46,6 @@ impl MeetupEventBuilder {
     }
     /// get a 'raw' meetup member reference
     fn get_member(&self, id: &str) -> Option<&RawMember> {
-        println!("member id: {}", id);
         self.members.get(id)
     }
     /// get a 'raw' meetup photoinfo reference
