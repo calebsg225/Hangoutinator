@@ -7,6 +7,8 @@ CREATE TABLE meetup_events (
 	event_hash NUMERIC(20) NOT NULL,
 	-- keep track of duplicate events across meetup groups
 	duplicate_event_hash NUMERIC(20) NOT NULL,
+	-- keep track of repeated events within a meetup group
+	repeated_event_hash NUMERIC(20) NOT NULL,
 	-- keep track of end time to be removed from db
 	end_time timestamptz NOT NULL,
 

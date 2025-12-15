@@ -69,8 +69,8 @@ async fn sync_meetup_discord_events(
         for event in events {
             let event_id = event.id.clone();
             println!("Syncing event with id `{}`...", event_id);
-            let event_hash = event.generate_hash();
-            let dup_hash = event.generate_dup_hash();
+            let event_hash = event.get_hash();
+            let dup_hash = event.get_dup_hash();
             let existing_event = sqlx::query!(
                 "SELECT * FROM meetup_events WHERE meetup_event_id = $1",
                 event_id
@@ -119,6 +119,10 @@ async fn sync_meetup_discord_events(
     Ok(())
 }
 
+// TODO: Create all discord events, then post once after all events from all groups have been
+// collected. Doing this reduces the amount of http requests sent to discord, reducing rate
+// limiting.
+
 // Updates an out-of-date tracked meetup event with fresh event data
 // pulled from meetup.com.
 async fn resync_tracked_meetup_event(
@@ -126,7 +130,7 @@ async fn resync_tracked_meetup_event(
     pool: &sqlx::PgPool,
     ctx: &Context,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let event_hash = new_event.generate_hash();
+    let event_hash = new_event.get_hash();
     // get linked discord event
     let discord_events = sqlx::query!(
         r#"
@@ -160,11 +164,12 @@ async fn resync_tracked_meetup_event(
     sqlx::query!(
         r#"
             UPDATE meetup_events
-            SET event_hash = $1, duplicate_event_hash = $2, end_time = $3
-            WHERE meetup_event_id = $4
+            SET event_hash = $1, duplicate_event_hash = $2, repeated_event_hash = $3, end_time = $4
+            WHERE meetup_event_id = $5
         "#,
         BigDecimal::from(event_hash),
-        BigDecimal::from(new_event.generate_dup_hash()),
+        BigDecimal::from(new_event.get_dup_hash()),
+        BigDecimal::from(new_event.get_rep_hash()),
         new_event.end_time,
         new_event.id
     )
@@ -187,8 +192,8 @@ async fn sync_untracked_meetup_event(
         // TODO: deal with cases where meetup event group id
         // is not an integer
         BigDecimal::from(new_event.group.id.parse::<u64>().unwrap()),
-        BigDecimal::from(new_event.generate_hash()),
-        BigDecimal::from(new_event.generate_dup_hash()),
+        BigDecimal::from(new_event.get_hash()),
+        BigDecimal::from(new_event.get_dup_hash()),
         new_event.end_time
     )
     .execute(pool)

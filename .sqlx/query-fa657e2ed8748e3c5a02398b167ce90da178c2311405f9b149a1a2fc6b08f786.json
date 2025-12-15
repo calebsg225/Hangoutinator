@@ -25,6 +25,11 @@
       },
       {
         "ordinal": 4,
+        "name": "repeated_event_hash",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
         "name": "end_time",
         "type_info": "Timestamptz"
       }
@@ -35,6 +40,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,

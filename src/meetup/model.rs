@@ -171,22 +171,39 @@ impl MeetupEvent {
         }
     }
     /// generates a unique event hash
-    pub fn generate_hash(&self) -> u64 {
+    pub fn get_hash(&self) -> u64 {
         let mut state = DefaultHasher::new();
         self.creator_member.hash(&mut state);
         self.venue.hash(&mut state);
         self.title.hash(&mut state);
         self.description.hash(&mut state);
-        self.start_time.hash(&mut state);
-        self.end_time.hash(&mut state);
+        self.created_time.hash(&mut state);
         state.finish()
     }
-    /// generates an event hash to identify duplicate events
-    pub fn generate_dup_hash(&self) -> u64 {
+    /// generates an event hash to identify duplicate events.
+    ///
+    /// A duplicate event in this context is an event identical in nature to another
+    /// event in a different meetup group, Ex. the same board game event posted in two
+    /// or more meetup groups.
+    pub fn get_dup_hash(&self) -> u64 {
         let mut state = DefaultHasher::new();
         self.creator_member.hash(&mut state);
         self.venue.hash(&mut state);
-        // add start/end time(s) rounded to the day?
+        self.start_time.hash(&mut state);
+        state.finish()
+    }
+    /// generate an event hash to identify repeated events.
+    ///
+    /// A repetition event in this context is an event identical in nature to another event
+    /// of the same meetup group, with a different date & time, Ex. a board game event
+    /// that repeats every week.
+    pub fn get_rep_hash(&self) -> u64 {
+        let mut state = DefaultHasher::new();
+        self.creator_member.hash(&mut state);
+        self.venue.hash(&mut state);
+        self.group.hash(&mut state);
+        // make the time of the event part of the hash, removing the date
+        self.start_time.time().hash(&mut state);
         state.finish()
     }
 }
@@ -275,6 +292,7 @@ struct RawGroup {
     pub organizer: String,
 }
 
+#[derive(Hash)]
 pub struct Group {
     pub id: String,
     pub name: String,
