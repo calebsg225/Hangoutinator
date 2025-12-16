@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT admin_role_id FROM guilds WHERE guild_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "admin_role_id",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "a470d619f9932e4312d065d0f48d0315975d96541166630f218b254e56b15d85"
+}
