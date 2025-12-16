@@ -95,7 +95,7 @@ impl EventHandler for Handler {
 
         println!("{} is connected!", ready.user.name);
         features::welcome_role::populate_unverified_members(&ctx, &verified_role_id).await;
-        features::event_manager::run_scheduler(&ctx, &self.db_pool);
+        //features::event_manager::run_scheduler(&ctx, &self.db_pool);
     }
 
     async fn shards_ready(&self, _ctx: Context, total_shards: u32) {
