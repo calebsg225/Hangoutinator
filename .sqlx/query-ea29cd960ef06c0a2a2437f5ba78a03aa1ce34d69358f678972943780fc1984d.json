@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE guilds SET admin_role_id = $1 WHERE guild_id = $2",
+  "query": "UPDATE guilds SET access_role_id = $1 WHERE guild_id = $2",
   "describe": {
     "columns": [],
     "parameters": {
@@ -11,5 +11,5 @@
     },
     "nullable": []
   },
-  "hash": "bb16c063cc7b92a301df303348d98cf0af44416dbda6b43aad76c049dd587020"
+  "hash": "ea29cd960ef06c0a2a2437f5ba78a03aa1ce34d69358f678972943780fc1984d"
 }

@@ -14,7 +14,7 @@ pub async fn command(
 ) -> Result<(), Error> {
     let pool = &ctx.data().pool;
     sqlx::query!(
-        "UPDATE guilds SET admin_role_id = $1 WHERE guild_id = $2",
+        "UPDATE guilds SET access_role_id = $1 WHERE guild_id = $2",
         BigDecimal::from(role.id.get()),
         BigDecimal::from(ctx.guild_id().unwrap().get())
     )

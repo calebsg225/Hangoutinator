@@ -33,7 +33,7 @@ CREATE TABLE guilds (
 	guild_id NUMERIC(20) NOT NULL UNIQUE,
 	welcome_role_id NUMERIC(22),
 	welcome_channel_id NUMERIC(20),
-	admin_role_id NUMERIC(22),
+	access_role_id NUMERIC(22),
 	PRIMARY KEY (guild_id)
 );
 

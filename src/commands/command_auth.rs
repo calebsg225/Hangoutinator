@@ -29,7 +29,7 @@ pub async fn has_access(ctx: Context<'_>) -> Result<bool, Error> {
 async fn get_access_role(pool: &sqlx::PgPool, guild_id: GuildId) -> Option<RoleId> {
     let access_role = sqlx::query!(
         r#"
-            SELECT admin_role_id FROM guilds WHERE guild_id = $1
+            SELECT access_role_id FROM guilds WHERE guild_id = $1
         "#,
         BigDecimal::from(guild_id.get())
     )
@@ -40,7 +40,7 @@ async fn get_access_role(pool: &sqlx::PgPool, guild_id: GuildId) -> Option<RoleI
         return None;
     });
     let record = access_role?;
-    let role = record.admin_role_id?;
+    let role = record.access_role_id?;
     let role = RoleId::from(role.to_string().parse::<u64>().unwrap());
     Some(role)
 }
