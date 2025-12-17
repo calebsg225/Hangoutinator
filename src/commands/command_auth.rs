@@ -1,5 +1,6 @@
 //! src/commands/command_auth.rs
 
+use poise::CreateReply;
 use serenity::all::{GuildId, RoleId};
 use sqlx::types::BigDecimal;
 
@@ -14,7 +15,14 @@ pub async fn has_access(ctx: Context<'_>) -> Result<bool, Error> {
     };
     let guild = ctx.http().get_guild(guild_id).await?;
     let is_guild_owner = guild.owner_id == ctx.author().id;
-    Ok(has_role || is_guild_owner)
+    let has_access = has_role || is_guild_owner;
+    if !has_access {
+        let reply = CreateReply::default()
+            .content(format!("You do not have access to this command.",))
+            .ephemeral(true);
+        ctx.send(reply).await?;
+    }
+    Ok(has_access)
 }
 
 /// fetch the access role from the db

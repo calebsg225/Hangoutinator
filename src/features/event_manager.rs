@@ -3,7 +3,7 @@
 #![allow(unused)]
 
 use serenity::all::{
-    Builder, Context, CreateScheduledEvent, EditScheduledEvent, GuildId, ScheduledEvent,
+    Builder, Context, CreateScheduledEvent, EditScheduledEvent, GuildId, GuildInfo, ScheduledEvent,
     ScheduledEventId, ScheduledEventType,
 };
 use sqlx::types::BigDecimal;
@@ -230,6 +230,42 @@ async fn sync_untracked_meetup_event(
         .await?;
     }
     Ok(())
+}
+
+pub async fn populate_db_guilds(
+    ctx: &Context,
+    pool: &sqlx::PgPool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let active_guilds = fetch_all_active_guilds(ctx).await;
+    for guild in active_guilds {
+        let guild_exists = sqlx::query!(
+            "SELECT COUNT (guild_id) FROM guilds WHERE guild_id = $1",
+            BigDecimal::from(guild.id.get())
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if guild_exists.count.unwrap() == 0 {
+            sqlx::query!(
+                "INSERT INTO guilds (guild_id) VALUES ($1)",
+                BigDecimal::from(guild.id.get())
+            )
+            .execute(pool)
+            .await?;
+        }
+    }
+    Ok(())
+}
+
+/// WARN: DUPLICATE!!! put population functions together
+///
+/// fetch guilds the bot is in
+/// NOTE: Further steps required to retrieve more than 100 guilds.
+async fn fetch_all_active_guilds(ctx: &Context) -> Vec<GuildInfo> {
+    ctx.http
+        .get_guilds(None, Some(100))
+        .await
+        .expect("Could not fetch active guilds.")
 }
 
 impl<'a> From<&MeetupEvent> for CreateScheduledEvent<'a> {

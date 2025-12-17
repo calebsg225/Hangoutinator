@@ -10,7 +10,7 @@ use serenity::{
     async_trait,
 };
 
-use crate::features;
+use crate::features::{self, event_manager};
 
 pub struct Handler {
     pub db_pool: sqlx::PgPool,
@@ -95,6 +95,9 @@ impl EventHandler for Handler {
 
         println!("{} is connected!", ready.user.name);
         features::welcome_role::populate_unverified_members(&ctx, &verified_role_id).await;
+        event_manager::populate_db_guilds(&ctx, &self.db_pool)
+            .await
+            .expect("Could not populate database with guilds.");
         //features::event_manager::run_scheduler(&ctx, &self.db_pool);
     }
 
