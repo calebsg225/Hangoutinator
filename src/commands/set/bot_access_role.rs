@@ -1,10 +1,10 @@
 //! src/commands/set/bot_access_role.rs
 
-use poise::{CreateReply, serenity_prelude as seren};
+use poise::serenity_prelude as seren;
 use seren::{Mentionable, Role};
-
 use sqlx::types::BigDecimal;
 
+use crate::commands::_helper as helper;
 use crate::{Context, Error};
 
 #[poise::command(slash_command, rename = "bot_access_role")]
@@ -21,9 +21,10 @@ pub async fn command(
     .execute(pool)
     .await?;
 
-    let reply = CreateReply::default()
-        .content(format!("The new bot access role is {}. Any user who does not have this role or is not the server owner will not be able to use administration commands for this bot.", role.mention()))
-        .ephemeral(true);
-    ctx.send(reply).await?;
+    let content = format!(
+        "The new bot access role is {}. Any user who does not have this role or is not the server owner will not be able to use administration commands for this bot.",
+        role.mention()
+    );
+    helper::send_reply(&ctx, true, &content).await?;
     Ok(())
 }

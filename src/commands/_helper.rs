@@ -1,4 +1,4 @@
-//! src/commands/command_auth.rs
+//! src/commands/_helper.rs
 
 use poise::CreateReply;
 use serenity::all::{GuildId, RoleId};
@@ -6,7 +6,7 @@ use sqlx::types::BigDecimal;
 
 use crate::{Context, Error};
 
-/// check if either the user has an access role or is the guild owner
+/// check if the user either has an access role or is the guild owner
 pub async fn has_access(ctx: Context<'_>) -> Result<bool, Error> {
     let guild_id = ctx.guild_id().unwrap();
     let has_role = match get_access_role(&ctx.data().pool, guild_id).await {
@@ -17,10 +17,8 @@ pub async fn has_access(ctx: Context<'_>) -> Result<bool, Error> {
     let is_guild_owner = guild.owner_id == ctx.author().id;
     let has_access = has_role || is_guild_owner;
     if !has_access {
-        let reply = CreateReply::default()
-            .content(format!("You do not have access to this command.",))
-            .ephemeral(true);
-        ctx.send(reply).await?;
+        let content = "You do not have access to this command.";
+        send_reply(&ctx, true, &content).await?;
     }
     Ok(has_access)
 }
@@ -43,4 +41,12 @@ async fn get_access_role(pool: &sqlx::PgPool, guild_id: GuildId) -> Option<RoleI
     let role = record.access_role_id?;
     let role = RoleId::from(role.to_string().parse::<u64>().unwrap());
     Some(role)
+}
+
+/// `simple` way to send a reply to a command interaction
+/// just another abstraction...
+pub async fn send_reply(ctx: &Context<'_>, ephemeral: bool, content: &str) -> Result<(), Error> {
+    let reply = CreateReply::default().ephemeral(ephemeral).content(content);
+    ctx.send(reply).await?;
+    Ok(())
 }
