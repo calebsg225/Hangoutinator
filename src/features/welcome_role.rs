@@ -5,11 +5,13 @@ use std::collections::{HashMap, HashSet};
 use rand::seq::IndexedRandom;
 use serenity::{
     all::{
-        ChannelId, Context, CreateMessage, GuildId, GuildInfo, GuildMemberUpdateEvent, Member,
-        Mention, Mentionable, RoleId, UserId,
+        ChannelId, Context, CreateMessage, GuildId, GuildMemberUpdateEvent, Mention, Mentionable,
+        RoleId, UserId,
     },
     prelude::TypeMapKey,
 };
+
+use crate::features::_util as util;
 
 /// each message has 2 strings, one goes before the user mention, one goes after
 const WELCOME_MESSAGES: [[&str; 2]; 3] = [
@@ -96,7 +98,7 @@ pub async fn welcome_verified_member(
 /// populates the `UnverifiedMemberCollection` collection on `client.data` with unverified members
 /// from all active guilds
 pub async fn populate_unverified_members(ctx: &Context, verified_role_id: &RoleId) {
-    let active_guilds = fetch_all_active_guilds(ctx).await;
+    let active_guilds = util::fetch_all_active_guilds(ctx).await;
 
     {
         // in this scope: populate `UnverifiedMemberCollection` with unverified members from all
@@ -105,7 +107,7 @@ pub async fn populate_unverified_members(ctx: &Context, verified_role_id: &RoleI
         let global_unverified_members = data.get_mut::<UnverifiedMemberCollection>().unwrap();
         println!("Active guild count: {}", active_guilds.len());
         for guild in active_guilds.iter() {
-            let guild_members = fetch_all_guild_members(&ctx, &guild).await;
+            let guild_members = util::fetch_all_guild_members(&ctx, &guild).await;
             let unverified_guild_members: HashSet<UserId> = HashSet::from_iter(
                 guild_members
                     .iter()
@@ -126,22 +128,4 @@ pub async fn populate_unverified_members(ctx: &Context, verified_role_id: &RoleI
 fn build_welcome_message(user_name: Mention) -> String {
     let [start, end] = WELCOME_MESSAGES.choose(&mut rand::rng()).unwrap();
     format!("{}{}{}", start, user_name, end)
-}
-
-/// fetch guilds the bot is in
-/// NOTE: Further steps required to retrieve more than 100 guilds.
-async fn fetch_all_active_guilds(ctx: &Context) -> Vec<GuildInfo> {
-    ctx.http
-        .get_guilds(None, Some(100))
-        .await
-        .expect("Could not fetch active guilds.")
-}
-
-/// NOTE: Further steps required to retrieve more than 1000 members.
-async fn fetch_all_guild_members(ctx: &Context, guild: &GuildInfo) -> Vec<Member> {
-    guild
-        .id
-        .members(&ctx.http, None, None)
-        .await
-        .expect("Could not fetch guild members.")
 }

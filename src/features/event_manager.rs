@@ -2,16 +2,14 @@
 //! periodically pull meetup events and update discord events accordingly
 #![allow(unused)]
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 
-use chrono::{DateTime, FixedOffset, Local, TimeDelta};
-use serenity::all::{
-    Builder, Context, CreateScheduledEvent, EditScheduledEvent, GuildId, GuildInfo, ScheduledEvent,
-    ScheduledEventId, ScheduledEventType,
-};
+use chrono::{Local, TimeDelta};
+use serenity::all::{Context, CreateScheduledEvent, EditScheduledEvent, ScheduledEventType};
 use sqlx::types::BigDecimal;
 
 use crate::Error;
+use crate::features::_util as util;
 use crate::meetup::{
     model::MeetupEvent,
     scrape::{self, get_meetup_group_data},
@@ -269,7 +267,7 @@ pub async fn populate_db_guilds(
     ctx: &Context,
     pool: &sqlx::PgPool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let active_guilds = fetch_all_active_guilds(ctx).await;
+    let active_guilds = util::fetch_all_active_guilds(ctx).await;
     for guild in active_guilds {
         let guild_exists = sqlx::query!(
             "SELECT COUNT (guild_id) FROM guilds WHERE guild_id = $1",
@@ -288,17 +286,6 @@ pub async fn populate_db_guilds(
         }
     }
     Ok(())
-}
-
-/// WARN: DUPLICATE!!! put population functions together
-///
-/// fetch guilds the bot is in
-/// NOTE: Further steps required to retrieve more than 100 guilds.
-async fn fetch_all_active_guilds(ctx: &Context) -> Vec<GuildInfo> {
-    ctx.http
-        .get_guilds(None, Some(100))
-        .await
-        .expect("Could not fetch active guilds.")
 }
 
 type OutdatedDiscordEvents = HashSet<BigDecimal>;
