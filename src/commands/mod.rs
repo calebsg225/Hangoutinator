@@ -2,7 +2,7 @@
 
 use crate::{Data, Error};
 
-mod _helper;
+mod _util;
 mod meetup;
 mod ping;
 mod set;

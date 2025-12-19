@@ -1,4 +1,4 @@
-//! src/commands/_helper.rs
+//! src/commands/_util.rs
 
 use poise::CreateReply;
 use serenity::all::{GuildId, RoleId};

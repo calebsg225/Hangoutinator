@@ -2,7 +2,7 @@
 
 //use sqlx::types::BigDecimal;
 
-//use crate::commands::_helper as helper;
+//use crate::commands::_util as util;
 use crate::{Context, Error};
 
 #[poise::command(slash_command, rename = "track")]
