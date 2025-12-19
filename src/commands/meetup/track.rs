@@ -15,5 +15,7 @@ pub async fn command(
     // - check if the group exists in db. if not, add.
     // - if it does, check if guild is already tracking
     // - if not, track and update events accordingly
+    // ^^^ NO ^^^
+    // there should be a different command whose sole purpose is to force-resync events
     Ok(())
 }

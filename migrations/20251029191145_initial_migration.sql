@@ -1,16 +1,19 @@
 -- individual meetup group events
 CREATE TABLE meetup_events (
 	meetup_event_id VARCHAR(15) NOT NULL UNIQUE,
-	-- the meetup groups the event belongs to
 	meetup_group_id NUMERIC(12) NOT NULL,
-	-- hash to quickly detect updates to a meetup event
+	title TEXT NOT NULL,
+	description TEXT NOT NULL,
+	-- detect updates to a meetup event
 	event_hash NUMERIC(20) NOT NULL,
-	-- keep track of duplicate events across meetup groups
+	-- duplicate events across meetup groups
 	duplicate_event_hash NUMERIC(20) NOT NULL,
-	-- keep track of repeated events within a meetup group
+	-- repeated events within a meetup group
 	repeated_event_hash NUMERIC(20) NOT NULL,
-	-- keep track of end time to be removed from db
+	-- time event expires
 	end_time timestamptz NOT NULL,
+	-- time of last attempted sync.
+	last_synced timestamptz NOT NULL,
 
 	PRIMARY KEY (meetup_event_id)
 );

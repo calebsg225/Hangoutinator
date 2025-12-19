@@ -15,22 +15,37 @@
       },
       {
         "ordinal": 2,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
         "name": "event_hash",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 3,
+        "ordinal": 5,
         "name": "duplicate_event_hash",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 4,
+        "ordinal": 6,
         "name": "repeated_event_hash",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "end_time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "last_synced",
         "type_info": "Timestamptz"
       }
     ],
@@ -40,6 +55,9 @@
       ]
     },
     "nullable": [
+      false,
+      false,
+      false,
       false,
       false,
       false,

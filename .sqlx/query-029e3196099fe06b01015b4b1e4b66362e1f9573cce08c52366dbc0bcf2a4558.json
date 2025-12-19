@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE meetup_events SET last_synced = $1 WHERE meetup_event_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "029e3196099fe06b01015b4b1e4b66362e1f9573cce08c52366dbc0bcf2a4558"
+}
