@@ -93,7 +93,7 @@ async fn populate_db_from_meetup_events(
             .await?;
             match existing_event {
                 Some(r) => {
-                    let outdated = resync_meetup_event(ctx, pool, r.event_hash, event).await?;
+                    let outdated = update_meetup_event(ctx, pool, r.event_hash, event).await?;
                     res.outdated_discord_events.extend(outdated);
                 }
                 None => {
@@ -119,7 +119,7 @@ async fn populate_db_from_meetup_events(
 // stored in the db
 //
 // Returns a set of ids of discord events that need to be updated as a result of resyncing
-async fn resync_meetup_event(
+async fn update_meetup_event(
     ctx: &Context,
     pool: &sqlx::PgPool,
     old_hash: BigDecimal,
@@ -159,15 +159,17 @@ async fn resync_meetup_event(
                 event_hash = $3,
                 duplicate_event_hash = $4,
                 repeated_event_hash = $5,
-                end_time = $6,
-                last_synced = $7
-            WHERE meetup_event_id = $8
+                start_time = $6,
+                end_time = $7,
+                last_synced = $8
+            WHERE meetup_event_id = $9
         "#,
         new_event.title,
         new_event.description,
         BigDecimal::from(event_hash),
         BigDecimal::from(new_event.get_dup_hash()),
         BigDecimal::from(new_event.get_rep_hash()),
+        new_event.start_time,
         new_event.end_time,
         now,
         new_event.id
@@ -199,10 +201,11 @@ async fn add_meetup_event(
                 description,
                 event_hash,
                 duplicate_event_hash,
+                start_time,
                 end_time,
                 last_synced
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         "#,
         new_event.id,
         // TODO: deal with cases where meetup event group id
@@ -212,6 +215,7 @@ async fn add_meetup_event(
         new_event.description,
         BigDecimal::from(new_event.get_hash()),
         BigDecimal::from(new_event.get_dup_hash()),
+        new_event.start_time,
         new_event.end_time,
         now
     )

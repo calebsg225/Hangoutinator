@@ -10,7 +10,8 @@ CREATE TABLE meetup_events (
 	duplicate_event_hash NUMERIC(20) NOT NULL,
 	-- repeated events within a meetup group
 	repeated_event_hash NUMERIC(20) NOT NULL,
-	-- time event expires
+	-- time of event
+	start_time timestamptz NOT NULL,
 	end_time timestamptz NOT NULL,
 	-- time of last attempted sync.
 	last_synced timestamptz NOT NULL,
