@@ -49,7 +49,7 @@ async fn main() {
         | GatewayIntents::MESSAGE_CONTENT
         | GatewayIntents::GUILD_MESSAGES;
 
-    let handler = event_handler::Handler { db_pool: pool };
+    let handler = event_handler::Handler { pool: pool };
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions::<Data, Error> {

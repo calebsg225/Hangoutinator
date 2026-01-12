@@ -11,7 +11,11 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
     vec![
         ping::command(),
         poise::Command {
-            subcommands: vec![set::bot_access_role::command()],
+            subcommands: vec![
+                set::bot_access_role::command(),
+                set::welcome_role::command(),
+                set::welcome_channel::command(),
+            ],
             ..set::command()
         },
         poise::Command {

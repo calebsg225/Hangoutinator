@@ -1,7 +1,5 @@
 //! src/event_handler.rs
 
-use std::env;
-
 use serenity::{
     all::{
         ChannelId, Context, EventHandler, GuildId, GuildMemberUpdateEvent, Member, Ready, RoleId,
@@ -9,11 +7,12 @@ use serenity::{
     },
     async_trait,
 };
+use sqlx::types::BigDecimal;
 
 use crate::features::{self, event_manager};
 
 pub struct Handler {
-    pub db_pool: sqlx::PgPool,
+    pub pool: sqlx::PgPool,
 }
 
 #[async_trait]
@@ -25,30 +24,26 @@ impl EventHandler for Handler {
         _new: Option<Member>, // can't get cache to work...
         event: GuildMemberUpdateEvent,
     ) {
-        // TODO: store and pull from db
-        let verified_role_id: RoleId = RoleId::from(
-            env::var("VERIFIED_ROLE_ID")
-                .expect("Expected a verified role id in the environment.")
-                .parse::<u64>()
-                .unwrap(),
-        );
-        // TODO: store and pull from db
-        let welcome_channel_id: ChannelId = ChannelId::from(
-            env::var("WELCOME_CHANNEL_ID")
-                .expect("Expected a welcome channel id in the environment.")
-                .parse::<u64>()
-                .unwrap(),
-        );
-
-        println!("A guild member update has occured.");
-
-        let _ = features::welcome_role::welcome_verified_member(
-            &ctx,
-            &event,
-            &verified_role_id,
-            &welcome_channel_id,
+        // TODO: cache role stuff instead of pulling from db every time. This event is
+        // called alot
+        let guild_info = sqlx::query!(
+            "SELECT welcome_role_id, welcome_channel_id FROM guilds WHERE guild_id = $1",
+            BigDecimal::from(event.guild_id.get())
         )
-        .await;
+        .fetch_one(&self.pool)
+        .await
+        .unwrap();
+        if let Some(wri) = guild_info.welcome_role_id
+            && let Some(wci) = guild_info.welcome_channel_id
+        {
+            let _ = features::welcome_role::welcome_verified_member(
+                &ctx,
+                &event,
+                &RoleId::from(wri.to_string().parse::<u64>().unwrap()),
+                &ChannelId::from(wci.to_string().parse::<u64>().unwrap()),
+            )
+            .await;
+        }
     }
 
     /// runs when a member joins a guild
@@ -85,19 +80,11 @@ impl EventHandler for Handler {
 
     /// runs when the bot is ready
     async fn ready(&self, ctx: Context, ready: Ready) {
-        // TODO: store and pull from db
-        let verified_role_id: RoleId = RoleId::from(
-            env::var("VERIFIED_ROLE_ID")
-                .expect("Expected a verified role id in the environment.")
-                .parse::<u64>()
-                .unwrap(),
-        );
-
         println!("{} is connected!", ready.user.name);
-        features::welcome_role::populate_unverified_members(&ctx, &verified_role_id).await;
-        event_manager::populate_db_guilds(&ctx, &self.db_pool)
+        event_manager::populate_db_guilds(&ctx, &self.pool)
             .await
             .expect("Could not populate database with guilds.");
+        features::welcome_role::populate_unverified_members(&ctx, &self.pool).await;
         //features::event_manager::run_scheduler(&ctx, &self.db_pool);
     }
 

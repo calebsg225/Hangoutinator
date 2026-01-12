@@ -1,6 +1,8 @@
 //! src/commands/set/mod.rs
 
 pub mod bot_access_role;
+pub mod welcome_channel;
+pub mod welcome_role;
 
 use crate::{Context, Error};
 
