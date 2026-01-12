@@ -4,6 +4,7 @@ CREATE TABLE meetup_events (
 	meetup_group_id NUMERIC(12) NOT NULL,
 	title TEXT NOT NULL,
 	description TEXT NOT NULL,
+	location TEXT NOT NULL,
 	-- detect updates to a meetup event
 	event_hash NUMERIC(20) NOT NULL,
 	-- duplicate events across meetup groups
