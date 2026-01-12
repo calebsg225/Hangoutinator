@@ -24,8 +24,6 @@ impl EventHandler for Handler {
         _new: Option<Member>, // can't get cache to work...
         event: GuildMemberUpdateEvent,
     ) {
-        // TODO: cache role stuff instead of pulling from db every time. This event is
-        // called alot
         let guild_info = sqlx::query!(
             "SELECT welcome_role_id, welcome_channel_id FROM guilds WHERE guild_id = $1",
             BigDecimal::from(event.guild_id.get())

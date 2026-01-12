@@ -35,7 +35,6 @@ async fn is_unverified_member(
     user_id: UserId,
 ) -> Result<bool, Box<dyn std::error::Error>> {
     let data = ctx.data.write().await;
-    // TODO: deal with these fucking unwrap()s!!
     let unverified_members = data
         .get::<UnverifiedMemberCollection>()
         .unwrap()

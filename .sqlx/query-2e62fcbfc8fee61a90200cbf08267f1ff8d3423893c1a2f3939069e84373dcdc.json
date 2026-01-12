@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT welcome_role_id, welcome_channel_id FROM guilds WHERE guild_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "welcome_role_id",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "welcome_channel_id",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "2e62fcbfc8fee61a90200cbf08267f1ff8d3423893c1a2f3939069e84373dcdc"
+}

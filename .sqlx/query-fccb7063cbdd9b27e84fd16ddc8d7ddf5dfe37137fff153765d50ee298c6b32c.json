@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM guilds",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "guild_id",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "welcome_role_id",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "welcome_channel_id",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "access_role_id",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "fccb7063cbdd9b27e84fd16ddc8d7ddf5dfe37137fff153765d50ee298c6b32c"
+}
