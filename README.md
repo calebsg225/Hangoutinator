@@ -50,41 +50,37 @@ Make sure to create the `.env` file following `.env.example`.
 Grab your bots token from your bots application page by selecting `Bot` from the sidebar
 and scrolling down to `TOKEN`.
 
-The desired Verified Role Id and Welcome Channel Id can be copied from your discord server.
-
 ### Running the bot
 
-Run `make` in your terminal from the projects main directory to build the docker image. This may take a few minutes the first time. 
-Once complete, run `make run` to create and start the docker container from the newly created image.
+#### Prerequisites
 
-The bot should now be running.
+- Rust and Cargo
+- Docker
 
-### Other useful commands
+Run `make hangoutinator` in your terminal from the projects main directory to build the bot and run the application. This may take a few minutes the first time. 
+
+The bot and postgres db should now be running.
+
+A database visualization tool is also included in the application, which should now be running locally on port `6969`. To log in:
+
+- `System`: `PostgreSQL`
+- `Server`: `database`
+- `Username`: [PGUSER_FROM_DOT_ENV]
+- `Password`: [PGPASSWORD_FROM_DOT_ENV]
+- `Database`: [PGDATABASE_FROM_DOT_ENV]
+
+### Useful commands
 
 |Command|Function|
 |-|-|
-|`make`|builds the docker image|
-|`make create`|creates the docker container from the image|
-|`make start`|starts the docker container|
-|`make run`|combined `make create` and `make start`|
-|`make stop`|stop the running docker container|
-|`make destroy`|destroy the stopped docker container|
-|`make logs`|prints out logs from the docker container|
+|`make hangoutinator`|builds bot and runs the entire application|
+|`make release`|builds the bot image from the dockerfile|
+|`make update`|takes down bot, re-builds, brings bot back online|
+|`make migrate`|run migration on postgres db|
+|`make logs`|prints out bot logs|
 
 ## Features
 
 ### Welcoming Verified Members
 
-TODO: make commands for selecting roles and channels for this feature from discord
-
-** does not yet support mutliple guilds
-
 ### Managing Event Syncing
-
-Hangoutinator pulls meetup.com events from user-selected meetup.com groups and posts those events in a discord server.
-
-- Syncing of all events will take place once every `24hrs`.
-- If a meetup.com event is less than 1 hour old, the event will not immediatly be posted. Instead, once the event is 1 hour old,
-it will be re-fetched from meetup.com, then finally posted as a discord event.
-
-TODO: make commands for manually
