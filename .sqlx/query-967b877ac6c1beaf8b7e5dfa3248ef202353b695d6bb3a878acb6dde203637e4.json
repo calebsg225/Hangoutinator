@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM meetup_groups_guilds WHERE guild_id != $1 AND group_name = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "guild_id",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "group_name",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "967b877ac6c1beaf8b7e5dfa3248ef202353b695d6bb3a878acb6dde203637e4"
+}

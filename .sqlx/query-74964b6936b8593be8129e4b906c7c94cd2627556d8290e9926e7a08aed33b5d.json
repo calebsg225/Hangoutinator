@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO meetup_groups_guilds (guild_id, group_name) VALUES ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "74964b6936b8593be8129e4b906c7c94cd2627556d8290e9926e7a08aed33b5d"
+}
