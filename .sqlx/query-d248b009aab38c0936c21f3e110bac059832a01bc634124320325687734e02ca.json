@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT me.*\n            FROM meetup_events AS me\n            INNER JOIN discord_events_meetup_events AS deme\n            ON me.meetup_event_id = deme.meetup_event_id\n            WHERE deme.discord_event_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "meetup_event_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "meetup_group_id",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "location",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "event_hash",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "duplicate_event_hash",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "repeated_event_hash",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "start_time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "end_time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_synced",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d248b009aab38c0936c21f3e110bac059832a01bc634124320325687734e02ca"
+}

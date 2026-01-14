@@ -83,7 +83,7 @@ impl EventHandler for Handler {
             .await
             .expect("Could not populate database with guilds.");
         features::welcome_role::populate_unverified_members(&ctx, &self.pool).await;
-        //features::event_manager::run_scheduler(&ctx, &self.db_pool);
+        features::event_manager::run_scheduler(&ctx, &self.pool);
     }
 
     async fn shards_ready(&self, _ctx: Context, total_shards: u32) {

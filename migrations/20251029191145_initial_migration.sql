@@ -23,6 +23,7 @@ CREATE TABLE meetup_events (
 -- all discord events from all guilds bot is active in
 CREATE TABLE discord_events (
 	discord_event_id NUMERIC(20) NOT NULL UNIQUE,
+	repeated_event_hash NUMERIC(20),
 	guild_id NUMERIC(20) NOT NULL,
 	PRIMARY KEY (discord_event_id)
 );

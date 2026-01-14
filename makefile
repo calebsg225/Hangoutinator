@@ -15,5 +15,11 @@ update:
 	docker compose down bot
 	make release
 	docker compose up bot -d
+
+db: 
+	docker compose down database
+	docker compose up database -d
+	make migrate
+
 logs:
 	docker compose logs bot

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT deme.discord_event_id\n            FROM discord_events_meetup_events AS deme\n            INNER JOIN meetup_events AS me\n            ON me.meetup_event_id = deme.meetup_event_id\n            WHERE me.last_synced < $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "discord_event_id",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9b14f6d0517b084c3319590893cda964390806ff6f194b23ba7f00a513543f17"
+}
