@@ -79,6 +79,7 @@ impl EventHandler for Handler {
     /// runs when the bot is ready
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
+        // NOTE: in this branch: only allows one guild
         event_manager::populate_db_guilds(&ctx, &self.pool)
             .await
             .expect("Could not populate database with guilds.");

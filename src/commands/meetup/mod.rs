@@ -1,6 +1,7 @@
 //! src/commands/meetup/mod.rs
 
 pub mod list;
+pub mod resync;
 pub mod track;
 pub mod untrack;
 

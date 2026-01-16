@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT group_name FROM meetup_groups_guilds WHERE guild_id = $1",
+  "query": "SELECT * FROM meetup_groups",
   "describe": {
     "columns": [
       {
@@ -10,13 +10,11 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Numeric"
-      ]
+      "Left": []
     },
     "nullable": [
       false
     ]
   },
-  "hash": "45f0a21182f51af60db8f0019e04a65c039718b3c08e90867ed7ceb72e86115b"
+  "hash": "f972865af53eca71bd74a4382320e3e05514588b0148532724767569c95987e3"
 }

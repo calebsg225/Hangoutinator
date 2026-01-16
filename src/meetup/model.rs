@@ -23,12 +23,9 @@ pub struct MeetupEventBuilder {
     venues: BTreeMap<String, RawVenue>,
 }
 
-// TODO: put all 'impl' blocks for each individual struct into this big struct
-// because this is fucking annoying, maybe it would be better?
 impl MeetupEventBuilder {
     pub fn from(json: Map<String, Value>) -> Self {
         let meetup_data = Self {
-            // TODO: deal with all the fucking unwraps...
             group: extract_fields(&json, "Group:").pop_first().unwrap().1,
             events: extract_sorted_events(&json, "Event:"),
             members: extract_fields(&json, "Member:"),

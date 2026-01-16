@@ -20,6 +20,7 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
         },
         poise::Command {
             subcommands: vec![
+                meetup::resync::command(),
                 meetup::list::command(),
                 meetup::track::command(),
                 meetup::untrack::command(),

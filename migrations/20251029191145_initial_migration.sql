@@ -24,6 +24,7 @@ CREATE TABLE meetup_events (
 -- all discord events from all guilds bot is active in
 CREATE TABLE discord_events (
 	discord_event_id NUMERIC(20) NOT NULL UNIQUE,
+	duplicate_event_hash NUMERIC(20),
 	repeated_event_hash NUMERIC(20),
 	guild_id NUMERIC(20) NOT NULL,
 	PRIMARY KEY (discord_event_id)
@@ -42,15 +43,6 @@ CREATE TABLE guilds (
 	welcome_channel_id NUMERIC(20),
 	access_role_id NUMERIC(22),
 	PRIMARY KEY (guild_id)
-);
-
--- Create 'linker' table between `meetup_groups` and `guilds` tables
-CREATE TABLE meetup_groups_guilds (
-	guild_id NUMERIC(20) NOT NULL,
-	group_name VARCHAR(100) NOT NULL,
-	PRIMARY KEY (guild_id, group_name),
-	FOREIGN KEY (guild_id) REFERENCES guilds(guild_id) ON DELETE CASCADE,
-	FOREIGN KEY (group_name)  REFERENCES meetup_groups(group_name) ON DELETE CASCADE
 );
 
 -- Create 'linker' table between `discord_events` and `meetup_events` tables
