@@ -15,6 +15,8 @@
 
 ## Usage
 
+**IMPORTANT: The version of the application on this branch will only work as intended when running on a single discord guild. For multi-guild support, please use the version on the `main` branch.**
+
 This project is designed to be run on a debian-based linux server, and is therefore being tested
 only on a debian-based linux machine for the moment.
 
