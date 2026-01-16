@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO meetup_events\n            (\n                meetup_event_id,\n                meetup_group_id,\n                meetup_group_name,\n                title,\n                description,\n                location,\n                event_hash,\n                duplicate_event_hash,\n                repeated_event_hash,\n                start_time,\n                end_time,\n                last_synced\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Numeric",
+        "Varchar",
+        "Text",
+        "Text",
+        "Text",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2547bb6fb79c67ecf9ab47b8d7471c2fa37deea25c705a1c562dc8308a4efdf7"
+}

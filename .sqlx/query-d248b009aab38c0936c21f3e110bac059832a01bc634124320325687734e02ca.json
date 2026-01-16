@@ -15,46 +15,51 @@
       },
       {
         "ordinal": 2,
+        "name": "meetup_group_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
         "name": "title",
         "type_info": "Text"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "description",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "location",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "event_hash",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "duplicate_event_hash",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "repeated_event_hash",
         "type_info": "Numeric"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "start_time",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "end_time",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "last_synced",
         "type_info": "Timestamptz"
       }
@@ -65,6 +70,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,

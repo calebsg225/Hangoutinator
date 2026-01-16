@@ -194,14 +194,17 @@ impl MeetupEvent {
     }
     /// generate an event hash to identify repeated events.
     ///
-    /// A repetition event in this context is an event identical in nature to another event
-    /// of the same meetup group, with a different date & time, Ex. a board game event
+    /// A repetition event in this context is an event identical in nature to another meetup
+    /// event, with a different date & time, Ex. a board game event
     /// that repeats every week.
     pub fn get_rep_hash(&self) -> u64 {
         let mut state = DefaultHasher::new();
         self.creator_member.hash(&mut state);
         self.venue.hash(&mut state);
-        self.group.hash(&mut state);
+        //self.group.hash(&mut state);
+        // NOTE: ^^^ Should the above be included??
+        // Should events sharing the rep hash include events of any group?
+        //
         // make the time of the event part of the hash, removing the date
         self.start_time.time().hash(&mut state);
         state.finish()

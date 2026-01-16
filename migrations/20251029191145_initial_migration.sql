@@ -2,6 +2,7 @@
 CREATE TABLE meetup_events (
 	meetup_event_id VARCHAR(15) NOT NULL UNIQUE,
 	meetup_group_id NUMERIC(12) NOT NULL,
+	meetup_group_name VARCHAR(100) NOT NULL,
 	title TEXT NOT NULL,
 	description TEXT NOT NULL,
 	location TEXT NOT NULL,
