@@ -67,7 +67,13 @@ async fn populate_db_from_meetup_events(
     println!("Syncing {} meetup groups...", meetup_groups.len());
     for group in meetup_groups {
         // scrape meetup site, aggregate into one struct
-        let group_data = scrape::get_meetup_group_data(&group.group_name).unwrap();
+        let Ok(group_data) = scrape::get_meetup_group_data(&group.group_name) else {
+            println!(
+                "Failed to fetch meetup data for meetup group `{}`",
+                group.group_name
+            );
+            continue;
+        };
         // all (immediate upcoming, up to 30) meetup events in this meetup group
         let events: Vec<MeetupEvent> = group_data.get_events();
         println!(
@@ -77,7 +83,6 @@ async fn populate_db_from_meetup_events(
         );
         for event in events {
             let event_id = event.id.clone();
-            println!("Syncing event with id `{}`...", event_id);
             let event_hash = event.get_hash();
             let dup_hash = event.get_dup_hash();
             let existing_event = sqlx::query!(
@@ -97,7 +102,6 @@ async fn populate_db_from_meetup_events(
                     }
                 }
             };
-            println!("Syncing process complete for event with id `{}`.", event_id);
         }
         println!(
             "Syncing complete for events in meetup group `{}`.",

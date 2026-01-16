@@ -246,6 +246,7 @@ impl Venue {
 struct RawMember {
     pub id: String, // id could be a string of characters instead of a string of digits
     pub name: String,
+    #[serde(default)]
     #[serde(deserialize_with = "string_from_sub_ref")]
     #[serde(rename = "memberPhoto")]
     pub photo: String, // ref points to a meetup 'PhotoInfo:' prop
