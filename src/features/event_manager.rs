@@ -20,6 +20,7 @@ use crate::meetup::{
 
 // set data to be refetched once every hour
 const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3600);
+const LAST_SYNCED_DELAY: std::time::Duration = std::time::Duration::from_secs(60);
 //const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// starts a background task for keeping discord events synced with
@@ -599,7 +600,7 @@ async fn clean(ctx: &Context, pool: &sqlx::PgPool) -> Result<OutdatedDiscordEven
     let mut updates = OutdatedDiscordEvents::new();
     // select a time before the most recent sync but after the sync before that
     let outdated_last_synced = now
-        .checked_sub_signed(TimeDelta::from_std(REFETCH_MEETUP_DATA_INTERVAL).unwrap())
+        .checked_sub_signed(TimeDelta::from_std(LAST_SYNCED_DELAY).unwrap())
         .unwrap();
 
     let expired_discord_events = sqlx::query!(

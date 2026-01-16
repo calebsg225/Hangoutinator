@@ -33,5 +33,12 @@ pub async fn command(
     )
     .execute(pool)
     .await?;
+
+    util::send_reply(
+        &ctx,
+        true,
+        &format!("You will no longer track meetup group `{group_name}`."),
+    )
+    .await?;
     Ok(())
 }

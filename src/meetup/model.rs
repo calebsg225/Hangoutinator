@@ -170,8 +170,9 @@ impl MeetupEvent {
     /// generates a unique event hash
     pub fn get_hash(&self) -> u64 {
         let mut state = DefaultHasher::new();
-        self.creator_member.hash(&mut state);
-        self.venue.hash(&mut state);
+        self.creator_member.id.hash(&mut state);
+        self.venue.address.hash(&mut state);
+        self.venue.state.hash(&mut state);
         self.title.hash(&mut state);
         self.description.hash(&mut state);
         self.created_time.hash(&mut state);
@@ -184,8 +185,9 @@ impl MeetupEvent {
     /// or more meetup groups.
     pub fn get_dup_hash(&self) -> u64 {
         let mut state = DefaultHasher::new();
-        self.creator_member.hash(&mut state);
-        self.venue.hash(&mut state);
+        self.creator_member.id.hash(&mut state);
+        self.venue.address.hash(&mut state);
+        self.venue.state.hash(&mut state);
         self.start_time.hash(&mut state);
         state.finish()
     }
@@ -196,8 +198,9 @@ impl MeetupEvent {
     /// that repeats every week.
     pub fn get_rep_hash(&self) -> u64 {
         let mut state = DefaultHasher::new();
-        self.creator_member.hash(&mut state);
-        self.venue.hash(&mut state);
+        self.creator_member.id.hash(&mut state);
+        self.venue.address.hash(&mut state);
+        self.venue.state.hash(&mut state);
         //self.group.hash(&mut state);
         // NOTE: ^^^ Should the above be included??
         // Should events sharing the rep hash include events of any group?
@@ -224,17 +227,28 @@ struct RawVenue {
 #[derive(Hash)]
 pub struct Venue {
     pub id: String,
+    pub name: String,
+    pub address: String,
+    pub city: String,
+    pub state: String,
+    pub country: String,
     pub location: String,
 }
 
 impl Venue {
     fn from(rv: RawVenue) -> Self {
+        let location = format!(
+            "{} {} {} {} {}",
+            &rv.name, &rv.address, &rv.city, &rv.state, &rv.country
+        );
         Self {
             id: rv.id,
-            location: format!(
-                "{} {} {} {} {}",
-                rv.name, rv.address, rv.city, rv.state, rv.country
-            ),
+            name: rv.name,
+            address: rv.address,
+            city: rv.city,
+            state: rv.state,
+            country: rv.country,
+            location,
         }
     }
 }
@@ -356,7 +370,8 @@ fn extract_fields<T: DeserializeOwned>(
             Some(_) => Some((
                 //k.strip_prefix(partial).unwrap().to_owned(),
                 k.to_owned(),
-                from_value::<T>(v.to_owned()).expect("Could not convert `Value` to type `T`"),
+                from_value::<T>(v.to_owned())
+                    .expect(&format!("Could not convert [{k},{v}] `Value` to type `T`.")),
             )),
             _ => None,
         })
@@ -396,8 +411,11 @@ fn string_from_sub_ref<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let sub_ref: SubRef = Deserialize::deserialize(deserializer)?;
-    Ok(sub_ref.__ref)
+    let sub_ref: Option<SubRef> = Deserialize::deserialize(deserializer)?;
+    Ok(match sub_ref {
+        Some(sub) => sub.__ref,
+        None => String::new(),
+    })
 }
 
 /// allows serde to deserialize a usize from `SubCount` taken from the

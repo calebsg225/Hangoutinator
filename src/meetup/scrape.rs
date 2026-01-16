@@ -10,21 +10,20 @@ use scraper::{Html, Selector};
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 
+use crate::Error;
 use crate::meetup::model::MeetupEventBuilder;
 
 const MEETUP_START_URL: &str = "https://meetup.com/";
 const MEETUP_END_URL: &str = "/events/?type=upcoming";
 
-// TODO: remove this
-const WATCHED_GROUPS: [&str; 2] = ["gwinnett-hangouts", "roswell-and-alpharetta-20s-30s"];
-
 /// fetches JSON from a 'meetup.com' group, turns it into a
 /// rust-friendly data format (`MeetupGroupData`)
-pub fn get_meetup_group_data(
-    group_name: &str,
-) -> Result<MeetupEventBuilder, Box<dyn std::error::Error>> {
+pub fn get_meetup_group_data(group_name: &str) -> Result<MeetupEventBuilder, Error> {
     let json = fetch_json(group_name)?;
     let group_json = isolate_props(&json).unwrap();
+    if group_json.len() <= 1 {
+        return Err("Not a real meetup group page.".into());
+    };
     let meetup_group_data = MeetupEventBuilder::from(group_json);
     Ok(meetup_group_data)
 }
@@ -43,7 +42,7 @@ fn isolate_props(json: &str) -> Option<Map<String, Value>> {
 /// given the URL for that groups upcoming events page
 /// NOTE: fetches (up to) the next 30 upcoming meetup events and
 /// associated data
-fn fetch_json(group_name: &str) -> Result<String, Box<dyn std::error::Error>> {
+fn fetch_json(group_name: &str) -> Result<String, Error> {
     let url = build_url(group_name);
     let response = reqwest::blocking::get(&url)?;
     println!(

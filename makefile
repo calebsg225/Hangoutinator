@@ -12,9 +12,10 @@ release:
 	docker compose build bot
 
 update:
-	docker compose down bot
 	make release
+	docker compose down bot
 	docker compose up bot -d
+	make logs
 
 db: 
 	docker compose down database
@@ -22,4 +23,4 @@ db:
 	make migrate
 
 logs:
-	docker compose logs bot
+	docker compose logs bot -f

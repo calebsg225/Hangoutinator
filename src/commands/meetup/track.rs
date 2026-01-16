@@ -26,13 +26,6 @@ pub async fn command(
         return Ok(());
     }
 
-    let meetup_group = sqlx::query!(
-        "SELECT * FROM meetup_groups WHERE group_name = $1",
-        group_name
-    )
-    .fetch_optional(pool)
-    .await?;
-
     sqlx::query!(
         "INSERT INTO meetup_groups (group_name) VALUES ($1)",
         group_name
