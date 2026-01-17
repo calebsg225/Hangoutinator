@@ -1,12 +1,12 @@
 //! src/features/event_manager.rs
 //! periodically pull meetup events and update discord events accordingly
-#![allow(unused)]
+//#![allow(unused)]
 
 use std::collections::HashSet;
 
 use chrono::{DateTime, FixedOffset, Local, TimeDelta};
 use serenity::all::{
-    Context, CreateScheduledEvent, EditScheduledEvent, Guild, GuildId, ScheduledEventId,
+    Context, CreateScheduledEvent, EditScheduledEvent, GuildId, ScheduledEventId,
     ScheduledEventType,
 };
 use sqlx::types::BigDecimal;
@@ -15,7 +15,7 @@ use crate::Error;
 use crate::features::_util as util;
 use crate::meetup::{
     model::MeetupEvent,
-    scrape::{self, get_meetup_group_data},
+    scrape::{self},
 };
 
 // set data to be refetched once every hour
@@ -41,7 +41,7 @@ pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
 }
 
 pub async fn sync_meetup_discord_events(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
-    match populate_db_from_meetup_events(ctx, pool).await {
+    match populate_db_from_meetup_events(pool).await {
         Ok(mut updates) => sync_discord_events(ctx, pool, &mut updates).await?,
         Err(e) => println!("{}", e),
     };
@@ -53,10 +53,9 @@ pub async fn sync_meetup_discord_events(ctx: &Context, pool: &sqlx::PgPool) -> R
 /// Returns:
 /// - ids of existing discord events that need to be updated
 /// - ids of new meetup events not linked to a discord event
-async fn populate_db_from_meetup_events(
-    ctx: &Context,
-    pool: &sqlx::PgPool,
-) -> Result<SyncUpdates, Error> {
+async fn populate_db_from_meetup_events(pool: &sqlx::PgPool) -> Result<SyncUpdates, Error> {
+    // use the same time for all `last_synced` fields
+    let now = Local::now();
     let mut res = SyncUpdates::new();
     // get all tracked meetup groups
     let meetup_groups = sqlx::query!("SELECT * FROM meetup_groups")
@@ -84,8 +83,6 @@ async fn populate_db_from_meetup_events(
         );
         for event in events {
             let event_id = event.id.clone();
-            let event_hash = event.get_hash();
-            let dup_hash = event.get_dup_hash();
             let existing_event = sqlx::query!(
                 "SELECT * FROM meetup_events WHERE meetup_event_id = $1",
                 event_id
@@ -94,11 +91,11 @@ async fn populate_db_from_meetup_events(
             .await?;
             match existing_event {
                 Some(r) => {
-                    let outdated = update_meetup_event(ctx, pool, r.event_hash, event).await?;
+                    let outdated = update_meetup_event(pool, now, r.event_hash, event).await?;
                     res.outdated_discord_events.updated_me.extend(outdated);
                 }
                 None => {
-                    if let Some(id) = add_meetup_event(ctx, pool, event).await? {
+                    if let Some(id) = add_meetup_event(pool, now, event).await? {
                         res.orphan_meetup_events.insert(id);
                     }
                 }
@@ -113,7 +110,7 @@ async fn populate_db_from_meetup_events(
 
     // update outdated discord event ids set after removing old meetup event data
     // NOTE: this is shit...
-    let updates = clean(ctx, pool).await?;
+    let updates = clean(pool, now).await?;
     res.outdated_discord_events
         .expired_me
         .extend(updates.expired_me);
@@ -471,12 +468,11 @@ async fn manage_scheduled_event(
 //
 // Returns a set of ids of discord events that need to be updated as a result of resyncing
 async fn update_meetup_event(
-    ctx: &Context,
     pool: &sqlx::PgPool,
+    now: DateTime<Local>,
     old_hash: BigDecimal,
     new_event: MeetupEvent,
 ) -> Result<HashSet<BigDecimal>, Error> {
-    let now = Local::now();
     let event_hash = new_event.get_hash();
     if old_hash == BigDecimal::from(event_hash) {
         sqlx::query!(
@@ -542,11 +538,10 @@ async fn update_meetup_event(
 //
 // Returns the id of the event if it will be an orphan.
 async fn add_meetup_event(
-    ctx: &Context,
     pool: &sqlx::PgPool,
+    now: DateTime<Local>,
     new_event: MeetupEvent,
 ) -> Result<Option<String>, Error> {
-    let now = Local::now();
     let rep_hash = BigDecimal::from(new_event.get_rep_hash());
     sqlx::query!(
         r#"
@@ -595,8 +590,7 @@ async fn add_meetup_event(
 /// This function is designed to be run directly after a sync has occured.
 ///
 /// returns a set of all affected discord events to be updated later.
-async fn clean(ctx: &Context, pool: &sqlx::PgPool) -> Result<OutdatedDiscordEvents, Error> {
-    let now = Local::now();
+async fn clean(pool: &sqlx::PgPool, now: DateTime<Local>) -> Result<OutdatedDiscordEvents, Error> {
     let mut updates = OutdatedDiscordEvents::new();
     // select a time before the most recent sync but after the sync before that
     let outdated_last_synced = now
