@@ -62,9 +62,10 @@ async fn populate_db_from_meetup_events(pool: &sqlx::PgPool) -> Result<SyncUpdat
         .fetch_all(pool)
         .await?;
     if meetup_groups.len() == 0 {
-        return Err(Error::from("No meetup groups are being tracked."));
+        println!("No meetup groups are being tracked.");
+    } else {
+        println!("Syncing {} meetup groups...", meetup_groups.len());
     }
-    println!("Syncing {} meetup groups...", meetup_groups.len());
     for group in meetup_groups {
         // scrape meetup site, aggregate into one struct
         let Ok(group_data) = scrape::get_meetup_group_data(&group.group_name) else {
