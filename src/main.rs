@@ -6,7 +6,7 @@ use poise::serenity_prelude as serenity;
 
 use serenity::{
     Client,
-    all::{GatewayIntents, OnlineStatus},
+    all::{GatewayIntents /*OnlineStatus*/},
 };
 
 mod commands;
@@ -29,15 +29,14 @@ async fn main() {
     let token = env::var("TOKEN").expect("Expected a TOKEN in the environment.");
 
     // connect to database
-    // TODO: pull db data from env
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)
         .connect_with(
             sqlx::postgres::PgConnectOptions::new()
-                .host("database")
-                .username("postgres")
-                .password("foobar")
-                .port(5432),
+                .host(&env::var("PGHOST").unwrap())
+                .username(&env::var("PGUSER").unwrap())
+                .password(&env::var("PGPASSWORD").unwrap())
+                .port(env::var("PGPORT").unwrap().parse::<u16>().unwrap()),
         )
         .await
         .expect("Could not connect to database.");
@@ -68,7 +67,7 @@ async fn main() {
     let mut client = Client::builder(token, intents)
         .event_handler(handler)
         .framework(framework)
-        .status(OnlineStatus::Idle)
+        //.status(OnlineStatus::Idle)
         .type_map_insert::<features::welcome_role::UnverifiedMemberCollection>(HashMap::default())
         .await
         .expect("Could not create client");
