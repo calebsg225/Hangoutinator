@@ -150,7 +150,7 @@ async fn sync_discord_events(
 
             let existing_duplicates = sqlx::query_as!(
                 DBMeetupEvent,
-                "SELECT * FROM meetup_events WHERE duplicate_event_hash = $1",
+                "SELECT * FROM meetup_events WHERE duplicate_event_hash = $1 ORDER BY start_time ASC, meetup_group_name ASC",
                 first_linked_meetup_event.duplicate_event_hash
             )
             .fetch_all(pool)
@@ -203,7 +203,7 @@ async fn sync_discord_events(
 
         let existing_duplicates = sqlx::query_as!(
             DBMeetupEvent,
-            "SELECT * FROM meetup_events WHERE duplicate_event_hash = $1",
+            "SELECT * FROM meetup_events WHERE duplicate_event_hash = $1 ORDER BY start_time ASC, meetup_group_name ASC",
             first_linked_meetup_event.duplicate_event_hash
         )
         .fetch_all(pool)
@@ -229,7 +229,7 @@ async fn sync_discord_events(
                     ) VALUES ($1, $2)
                 "#,
                 discord_event.discord_event_id,
-                dup.meetup_event_id
+                dup.meetup_event_id,
             )
             .execute(pool)
             .await?;

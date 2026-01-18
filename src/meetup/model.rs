@@ -2,7 +2,7 @@
 //#![allow(unused)]
 //#![allow(non_snake_case)]
 
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, Datelike, FixedOffset};
 use serde::{
     Deserialize, Deserializer,
     de::{self, DeserializeOwned},
@@ -208,6 +208,7 @@ impl MeetupEvent {
         //
         // make the time of the event part of the hash, removing the date
         self.start_time.time().hash(&mut state);
+        self.start_time.weekday().hash(&mut state);
         state.finish()
     }
 }
