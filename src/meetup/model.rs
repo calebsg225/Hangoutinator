@@ -126,6 +126,7 @@ struct RawEvent {
 }
 
 /// 'refined' meetup event data
+#[allow(unused)]
 pub struct MeetupEvent {
     pub id: String,
     pub title: String,

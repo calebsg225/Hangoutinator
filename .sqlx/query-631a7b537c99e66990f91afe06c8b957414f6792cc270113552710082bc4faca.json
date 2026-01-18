@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE discord_events SET duplicate_event_hash = $1 WHERE discord_event_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "631a7b537c99e66990f91afe06c8b957414f6792cc270113552710082bc4faca"
+}

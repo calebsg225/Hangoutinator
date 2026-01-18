@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM meetup_events WHERE end_time < $1 OR last_synced < $2",
+  "query": "DELETE FROM meetup_events WHERE end_time <= $1 OR last_synced <= $2",
   "describe": {
     "columns": [],
     "parameters": {
@@ -11,5 +11,5 @@
     },
     "nullable": []
   },
-  "hash": "11a2213d923ad8b1b981281b4e1d0b07210504f44634ecc2b01f390c09728e1a"
+  "hash": "110762c8046072d158bda36b96e23f1291742e9d94a064ea6d4886e94057d0e3"
 }

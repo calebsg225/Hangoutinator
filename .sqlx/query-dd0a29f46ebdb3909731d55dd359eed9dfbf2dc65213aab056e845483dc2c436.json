@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT me.*\n            FROM meetup_events AS me\n            INNER JOIN discord_events_meetup_events AS deme\n            ON me.meetup_event_id = deme.meetup_event_id\n            WHERE deme.discord_event_id = $1\n            ",
+  "query": "SELECT * FROM meetup_events WHERE repeated_event_hash = $1",
   "describe": {
     "columns": [
       {
@@ -84,5 +84,5 @@
       false
     ]
   },
-  "hash": "d248b009aab38c0936c21f3e110bac059832a01bc634124320325687734e02ca"
+  "hash": "dd0a29f46ebdb3909731d55dd359eed9dfbf2dc65213aab056e845483dc2c436"
 }

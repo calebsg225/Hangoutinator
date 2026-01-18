@@ -1,6 +1,5 @@
 //! src/features/event_manager.rs
 //! periodically pull meetup events and update discord events accordingly
-//#![allow(unused)]
 
 use std::collections::HashSet;
 
@@ -41,22 +40,18 @@ pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
 }
 
 pub async fn sync_meetup_discord_events(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
-    match populate_db_from_meetup_events(pool).await {
-        Ok(mut updates) => sync_discord_events(ctx, pool, &mut updates).await?,
+    match sync_meetup_events(pool).await {
+        Ok(updates) => sync_discord_events(ctx, pool, updates.to_owned()).await?,
         Err(e) => println!("{}", e),
     };
     Ok(())
 }
 
 /// Fetches new meetup event data for all guild-tracked meetup groups, updates db with new data.
-///
-/// Returns:
-/// - ids of existing discord events that need to be updated
-/// - ids of new meetup events not linked to a discord event
-async fn populate_db_from_meetup_events(pool: &sqlx::PgPool) -> Result<SyncUpdates, Error> {
+async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, Error> {
     // use the same time for all `last_synced` fields
     let now = Local::now();
-    let mut res = SyncUpdates::new();
+    let mut res: HashSet<BigDecimal> = HashSet::new();
     // get all tracked meetup groups
     let meetup_groups = sqlx::query!("SELECT * FROM meetup_groups")
         .fetch_all(pool)
@@ -64,7 +59,7 @@ async fn populate_db_from_meetup_events(pool: &sqlx::PgPool) -> Result<SyncUpdat
     if meetup_groups.len() == 0 {
         println!("No meetup groups are being tracked.");
     } else {
-        println!("Syncing {} meetup groups...", meetup_groups.len());
+        println!("Syncing [{}] meetup groups...", meetup_groups.len());
     }
     for group in meetup_groups {
         // scrape meetup site, aggregate into one struct
@@ -78,27 +73,25 @@ async fn populate_db_from_meetup_events(pool: &sqlx::PgPool) -> Result<SyncUpdat
         // all (immediate upcoming, up to 30) meetup events in this meetup group
         let events: Vec<MeetupEvent> = group_data.get_events();
         println!(
-            "Syncing {} events in meetup group `{}`...",
+            "Syncing [{}] events in meetup group `{}`...",
             events.len(),
             group.group_name
         );
         for event in events {
             let event_id = event.id.clone();
-            let existing_event = sqlx::query!(
+            let existing_event = sqlx::query_as!(
+                DBMeetupEvent,
                 "SELECT * FROM meetup_events WHERE meetup_event_id = $1",
                 event_id
             )
             .fetch_optional(pool)
             .await?;
             match existing_event {
-                Some(r) => {
-                    let outdated = update_meetup_event(pool, now, r.event_hash, event).await?;
-                    res.outdated_discord_events.updated_me.extend(outdated);
+                Some(e) => {
+                    res.extend(update_meetup_event(pool, now, e, event).await?);
                 }
                 None => {
-                    if let Some(id) = add_meetup_event(pool, now, event).await? {
-                        res.orphan_meetup_events.insert(id);
-                    }
+                    res.insert(add_meetup_event(pool, now, event).await?);
                 }
             };
         }
@@ -109,244 +102,160 @@ async fn populate_db_from_meetup_events(pool: &sqlx::PgPool) -> Result<SyncUpdat
     }
     println!("Syncing complete for all tracked meetup groups.");
 
-    // update outdated discord event ids set after removing old meetup event data
-    // NOTE: this is shit...
-    let updates = clean(pool, now).await?;
-    res.outdated_discord_events
-        .expired_me
-        .extend(updates.expired_me);
-    res.outdated_discord_events
-        .removed_me
-        .extend(updates.removed_me);
+    res.extend(clean(pool, now).await?);
     Ok(res)
 }
 
 /// Uses the newly updated db to (re)sync discord events
 ///
-/// Takes in:
-/// - existing discord events that need updating
-/// - newly created meetup events
+/// takes in a set of all rep_hashes that need updating
 async fn sync_discord_events(
     ctx: &Context,
     pool: &sqlx::PgPool,
-    updates: &mut SyncUpdates,
+    updates: HashSet<BigDecimal>,
 ) -> Result<(), Error> {
     let guild_info = sqlx::query!("SELECT * FROM guilds LIMIT 1")
         .fetch_one(pool)
         .await?;
     let guild_id = GuildId::from(guild_info.guild_id.to_string().parse::<u64>().unwrap());
-    let mut meetup_ids_to_skip: HashSet<String> = HashSet::new();
-    // deal with discord events affected by an expired meetup event
-    for discord_event_id in &updates.outdated_discord_events.expired_me {
-        // delete event and check for next repeated event
-        let discord_event = sqlx::query_as!(
+
+    for rep_hash in updates {
+        let linked_discord_event = sqlx::query_as!(
             DBDiscordEvent,
-            "SELECT * FROM discord_events WHERE discord_event_id = $1",
-            discord_event_id
+            "SELECT * FROM discord_events WHERE repeated_event_hash = $1",
+            rep_hash
         )
-        .fetch_one(pool)
+        .fetch_optional(pool)
         .await?;
 
+        let first_linked_meetup_event = sqlx::query!(
+            r#"
+                    SELECT duplicate_event_hash 
+                    FROM meetup_events 
+                    WHERE repeated_event_hash = $1
+                    ORDER BY start_time ASC
+                    LIMIT 1
+                "#,
+            rep_hash
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        let Some(discord_event) = linked_discord_event else {
+            // no discord event tied to rep hash: create event (if required)
+
+            let Some(first_linked_meetup_event) = first_linked_meetup_event else {
+                continue;
+            };
+
+            let existing_duplicates = sqlx::query_as!(
+                DBMeetupEvent,
+                "SELECT * FROM meetup_events WHERE duplicate_event_hash = $1",
+                first_linked_meetup_event.duplicate_event_hash
+            )
+            .fetch_all(pool)
+            .await?;
+
+            manage_scheduled_event(
+                &ctx,
+                ManageType::Create,
+                existing_duplicates,
+                guild_id,
+                pool,
+            )
+            .await?;
+            continue;
+        };
+        // discord event already exists tied to rep hash.
+        // if no linked meetup events, delete discord event.
+
+        let scheduled_event_id = ScheduledEventId::from(
+            discord_event
+                .discord_event_id
+                .to_string()
+                .parse::<u64>()
+                .unwrap(),
+        );
+
+        let meetup_events = sqlx::query_as!(
+            DBMeetupEvent,
+            "SELECT * FROM meetup_events WHERE repeated_event_hash = $1",
+            rep_hash
+        )
+        .fetch_all(pool)
+        .await?;
+
+        if meetup_events.len() == 0 {
+            // no meetup events: delete discord event
+            manage_scheduled_event(
+                &ctx,
+                ManageType::Delete(scheduled_event_id),
+                Vec::new(),
+                guild_id,
+                pool,
+            )
+            .await?;
+        }
+
+        let Some(first_linked_meetup_event) = first_linked_meetup_event else {
+            continue;
+        };
+
+        let existing_duplicates = sqlx::query_as!(
+            DBMeetupEvent,
+            "SELECT * FROM meetup_events WHERE duplicate_event_hash = $1",
+            first_linked_meetup_event.duplicate_event_hash
+        )
+        .fetch_all(pool)
+        .await?;
+
+        // TODO: move to `manage_scheduled_event` Edit()
+
+        // delete all connections (less cumbersome than being picky, though slower(?))
         sqlx::query!(
-            "DELETE FROM discord_events WHERE discord_event_id = $1",
-            discord_event_id
+            "DELETE FROM discord_events_meetup_events WHERE discord_event_id = $1",
+            discord_event.discord_event_id
         )
         .execute(pool)
         .await?;
 
-        create_next_rep_event(ctx, pool, discord_event).await?;
-    }
-
-    // deal with discord events affected by a removed meetup event
-    for discord_event_id in &updates.outdated_discord_events.removed_me {
-        // if there are existing duplicate events: keep event, update descr.
-        // otherwise: delete event and check for next repeated event
-        let discord_event = sqlx::query_as!(
-            DBDiscordEvent,
-            "SELECT * FROM discord_events WHERE discord_event_id = $1",
-            discord_event_id
-        )
-        .fetch_one(pool)
-        .await?;
-
-        let scheduled_event_id =
-            ScheduledEventId::from(discord_event_id.to_string().parse::<u64>().unwrap());
-
-        let existing_duplicates = sqlx::query_as!(
-            DBMeetupEvent,
-            r#"
-            SELECT me.*
-            FROM meetup_events AS me
-            INNER JOIN discord_events_meetup_events AS deme
-            ON me.meetup_event_id = deme.meetup_event_id
-            WHERE deme.discord_event_id = $1
-            "#,
-            discord_event_id
-        )
-        .fetch_all(pool)
-        .await?;
-
-        if existing_duplicates.len() == 0 {
+        // TODO: move to `manage_scheduled_event` Edit()
+        for dup in &existing_duplicates {
             sqlx::query!(
-                "DELETE FROM discord_events WHERE discord_event_id = $1",
-                discord_event_id
+                r#"
+                    INSERT INTO discord_events_meetup_events (
+                        discord_event_id,
+                        meetup_event_id
+                    ) VALUES ($1, $2)
+                "#,
+                discord_event.discord_event_id,
+                dup.meetup_event_id
             )
             .execute(pool)
             .await?;
-
-            create_next_rep_event(ctx, pool, discord_event).await?;
-        } else {
-            manage_scheduled_event(
-                ctx,
-                ManageType::Edit(scheduled_event_id),
-                existing_duplicates,
-                guild_id,
-                pool,
-            )
-            .await?;
         }
-    }
 
-    // deal with discord events affected by an updated meetup event
-    for discord_event_id in &updates.outdated_discord_events.updated_me {
-        let discord_event = sqlx::query_as!(
-            DBDiscordEvent,
-            "SELECT * FROM discord_events WHERE discord_event_id = $1",
-            discord_event_id
-        )
-        .fetch_one(pool)
-        .await?;
-
-        let scheduled_event_id =
-            ScheduledEventId::from(discord_event_id.to_string().parse::<u64>().unwrap());
-
-        let existing_duplicates = sqlx::query_as!(
-            DBMeetupEvent,
-            r#"
-            SELECT me.*
-            FROM meetup_events AS me
-            INNER JOIN discord_events_meetup_events AS deme
-            ON me.meetup_event_id = deme.meetup_event_id
-            WHERE deme.discord_event_id = $1
-            "#,
-            discord_event_id
-        )
-        .fetch_all(pool)
-        .await?;
-
-        if existing_duplicates.len() == 0 {
+        // TODO: move to `manage_scheduled_event` Edit()
+        if discord_event.duplicate_event_hash != first_linked_meetup_event.duplicate_event_hash {
             sqlx::query!(
-                "DELETE FROM discord_events WHERE discord_event_id = $1",
-                discord_event_id
+                "UPDATE discord_events SET duplicate_event_hash = $1 WHERE discord_event_id = $2",
+                first_linked_meetup_event.duplicate_event_hash,
+                discord_event.discord_event_id
             )
             .execute(pool)
             .await?;
-
-            manage_scheduled_event(
-                ctx,
-                ManageType::Delete(scheduled_event_id),
-                existing_duplicates,
-                guild_id,
-                pool,
-            )
-            .await?;
-
-            create_next_rep_event(ctx, pool, discord_event).await?;
-        } else {
-            manage_scheduled_event(
-                ctx,
-                ManageType::Edit(scheduled_event_id),
-                existing_duplicates,
-                guild_id,
-                pool,
-            )
-            .await?;
         }
+
+        manage_scheduled_event(
+            &ctx,
+            ManageType::Edit(scheduled_event_id),
+            existing_duplicates,
+            guild_id,
+            pool,
+        )
+        .await?;
     }
 
-    for meetup_event_id in &updates.orphan_meetup_events {
-        if meetup_ids_to_skip.contains(meetup_event_id) {
-            continue;
-        }
-        // these have no home: create events for all of them
-        let meetup_event = sqlx::query_as!(
-            DBMeetupEvent,
-            "SELECT * FROM meetup_events WHERE meetup_event_id = $1",
-            meetup_event_id
-        )
-        .fetch_one(pool)
-        .await?;
-
-        let related_events = sqlx::query_as!(
-            DBMeetupEvent,
-            "SELECT * FROM meetup_events WHERE repeated_event_hash = $1 ORDER BY start_time ASC",
-            meetup_event.repeated_event_hash
-        )
-        .fetch_all(pool)
-        .await?;
-
-        meetup_ids_to_skip.extend(related_events.iter().map(|e| e.meetup_event_id.to_owned()));
-
-        let main_event = &related_events[0];
-
-        let upcoming_duplicates: Vec<DBMeetupEvent> = related_events
-            .iter()
-            .filter_map(|r| {
-                if r.duplicate_event_hash == main_event.duplicate_event_hash {
-                    return Some(r.to_owned());
-                };
-                None
-            })
-            .collect();
-
-        let linked_discord_event = sqlx::query!(
-            "SELECT COUNT(*) FROM discord_events WHERE duplicate_event_hash = $1",
-            main_event.duplicate_event_hash
-        )
-        .fetch_one(pool)
-        .await?;
-
-        if let Some(count) = linked_discord_event.count
-            && count == 0
-        {
-            manage_scheduled_event(ctx, ManageType::Create, upcoming_duplicates, guild_id, pool)
-                .await?;
-        }
-    }
-    Ok(())
-}
-
-/// check for the next upcoming repeated meetup event, creates a discord
-/// event for it if required
-/// NOTE: Requires group to be excluded from rep hash
-async fn create_next_rep_event(
-    ctx: &Context,
-    pool: &sqlx::PgPool,
-    discord_event: DBDiscordEvent,
-) -> Result<(), Error> {
-    let Some(rep_hash) = discord_event.repeated_event_hash else {
-        return Ok(());
-    };
-
-    let guild_id = GuildId::from(discord_event.guild_id.to_string().parse::<u64>().unwrap());
-    // NOTE: it would be useful here to ignore the group in rep hash
-    let next_rep_event = sqlx::query!(
-        "SELECT duplicate_event_hash FROM meetup_events WHERE repeated_event_hash = $1 ORDER BY start_time ASC LIMIT 1", 
-        rep_hash
-    ).fetch_optional(pool).await?;
-
-    let Some(next_event) = next_rep_event else {
-        return Ok(());
-    };
-
-    let existing_duplicates = sqlx::query_as!(
-        DBMeetupEvent,
-        "SELECT * FROM meetup_events WHERE duplicate_event_hash = $1",
-        next_event.duplicate_event_hash
-    )
-    .fetch_all(pool)
-    .await?;
-    manage_scheduled_event(ctx, ManageType::Create, existing_duplicates, guild_id, pool).await?;
     Ok(())
 }
 
@@ -459,6 +368,13 @@ async fn manage_scheduled_event(
                 .http
                 .delete_scheduled_event(guild_id, scheduled_event_id)
                 .await?;
+
+            sqlx::query!(
+                "DELETE FROM discord_events WHERE discord_event_id = $1",
+                BigDecimal::from(scheduled_event_id.get())
+            )
+            .execute(pool)
+            .await?;
         }
     };
     Ok(())
@@ -467,15 +383,15 @@ async fn manage_scheduled_event(
 // Syncs a meetup event pulled from meetup.com with an existing meetup event
 // stored in the db
 //
-// Returns a set of ids of discord events that need to be updated as a result of resyncing
+// Returns a set of rep hashes of meetup events that were changed
 async fn update_meetup_event(
     pool: &sqlx::PgPool,
     now: DateTime<Local>,
-    old_hash: BigDecimal,
+    old_event: DBMeetupEvent,
     new_event: MeetupEvent,
 ) -> Result<HashSet<BigDecimal>, Error> {
     let event_hash = new_event.get_hash();
-    if old_hash == BigDecimal::from(event_hash) {
+    if old_event.event_hash == BigDecimal::from(event_hash) {
         sqlx::query!(
             "UPDATE meetup_events SET last_synced = $1 WHERE meetup_event_id = $2",
             now,
@@ -485,18 +401,11 @@ async fn update_meetup_event(
         .await?;
         return Ok(HashSet::new());
     }
-    // get affected discord events
-    let outdated_discord_events = sqlx::query!(
-        r#"
-            SELECT DISTINCT deme.discord_event_id FROM discord_events_meetup_events AS deme
-            INNER JOIN meetup_events AS me
-            ON deme.meetup_event_id = me.meetup_event_id
-            WHERE me.meetup_event_id = $1
-        "#,
-        new_event.id
-    )
-    .fetch_all(pool)
-    .await?;
+
+    let mut res: HashSet<BigDecimal> = HashSet::new();
+    res.insert(BigDecimal::from(old_event.repeated_event_hash));
+    let new_rep_hash = BigDecimal::from(new_event.get_rep_hash());
+    res.insert(new_rep_hash.clone());
 
     // update existing event in db with new data
     sqlx::query!(
@@ -518,7 +427,7 @@ async fn update_meetup_event(
         new_event.venue.location,
         BigDecimal::from(event_hash),
         BigDecimal::from(new_event.get_dup_hash()),
-        BigDecimal::from(new_event.get_rep_hash()),
+        new_rep_hash,
         new_event.start_time,
         new_event.end_time,
         now,
@@ -527,22 +436,17 @@ async fn update_meetup_event(
     .execute(pool)
     .await?;
 
-    // TODO: What to do if venue changes???
-
-    Ok(outdated_discord_events
-        .iter()
-        .map(|e| e.discord_event_id.to_owned())
-        .collect())
+    Ok(res)
 }
 
 // Adds a meetup event pulled from meetup.com to the db
 //
-// Returns the id of the event if it will be an orphan.
+// Returns the rep hash of the new meetup event
 async fn add_meetup_event(
     pool: &sqlx::PgPool,
     now: DateTime<Local>,
     new_event: MeetupEvent,
-) -> Result<Option<String>, Error> {
+) -> Result<BigDecimal, Error> {
     let rep_hash = BigDecimal::from(new_event.get_rep_hash());
     sqlx::query!(
         r#"
@@ -580,7 +484,8 @@ async fn add_meetup_event(
     )
     .execute(pool)
     .await?;
-    Ok(Some(new_event.id))
+
+    Ok(rep_hash)
 }
 
 /// Removes meetup events from the db if:
@@ -590,65 +495,33 @@ async fn add_meetup_event(
 ///
 /// This function is designed to be run directly after a sync has occured.
 ///
-/// returns a set of all affected discord events to be updated later.
-async fn clean(pool: &sqlx::PgPool, now: DateTime<Local>) -> Result<OutdatedDiscordEvents, Error> {
-    let mut updates = OutdatedDiscordEvents::new();
+/// returns a set of all affected rep_hashes
+async fn clean(pool: &sqlx::PgPool, now: DateTime<Local>) -> Result<HashSet<BigDecimal>, Error> {
     // select a time before the most recent sync but after the sync before that
     let outdated_last_synced = now
         .checked_sub_signed(TimeDelta::from_std(LAST_SYNCED_DELAY).unwrap())
         .unwrap();
 
-    let expired_discord_events = sqlx::query!(
-        r#"
-            SELECT DISTINCT deme.discord_event_id
-            FROM discord_events_meetup_events AS deme
-            INNER JOIN meetup_events AS me
-            ON me.meetup_event_id = deme.meetup_event_id
-            WHERE me.end_time < $1
-        "#,
+    let expired_or_deleted_meetup_event_rep_hashes = sqlx::query!(
+        "SELECT DISTINCT repeated_event_hash FROM meetup_events WHERE end_time <= $1 OR last_synced <= $2",
         now,
-    )
-    .fetch_all(pool)
-    .await?;
-
-    let deleted_discord_events = sqlx::query!(
-        r#"
-            SELECT DISTINCT deme.discord_event_id
-            FROM discord_events_meetup_events AS deme
-            INNER JOIN meetup_events AS me
-            ON me.meetup_event_id = deme.meetup_event_id
-            WHERE me.last_synced < $1
-            AND me.end_time > $2
-        "#,
         outdated_last_synced,
-        now
     )
     .fetch_all(pool)
     .await?;
-
-    updates.expired_me.extend(
-        expired_discord_events
-            .iter()
-            .map(|e| e.discord_event_id.to_owned())
-            .collect::<HashSet<BigDecimal>>(),
-    );
-
-    updates.removed_me.extend(
-        deleted_discord_events
-            .iter()
-            .map(|e| e.discord_event_id.to_owned())
-            .collect::<HashSet<BigDecimal>>(),
-    );
 
     sqlx::query!(
-        "DELETE FROM meetup_events WHERE end_time < $1 OR last_synced < $2",
+        "DELETE FROM meetup_events WHERE end_time <= $1 OR last_synced <= $2",
         now,
         outdated_last_synced
     )
     .execute(pool)
     .await?;
 
-    Ok(updates)
+    Ok(expired_or_deleted_meetup_event_rep_hashes
+        .iter()
+        .map(|r| r.repeated_event_hash.to_owned())
+        .collect())
 }
 
 pub async fn populate_db_guilds(
@@ -679,34 +552,19 @@ pub async fn populate_db_guilds(
     Ok(())
 }
 
-// NOTE: these structs are shit...
-struct OutdatedDiscordEvents {
-    expired_me: HashSet<BigDecimal>,
-    removed_me: HashSet<BigDecimal>,
-    updated_me: HashSet<BigDecimal>,
-}
-
-impl OutdatedDiscordEvents {
-    fn new() -> Self {
-        Self {
-            expired_me: HashSet::new(),
-            removed_me: HashSet::new(),
-            updated_me: HashSet::new(),
-        }
-    }
-}
-
 /// Rust representation of sql `discord_events` table.
 #[derive(Debug)]
+#[allow(unused)]
 struct DBDiscordEvent {
     discord_event_id: BigDecimal,
-    repeated_event_hash: Option<BigDecimal>,
-    duplicate_event_hash: Option<BigDecimal>,
+    repeated_event_hash: BigDecimal,
+    duplicate_event_hash: BigDecimal,
     guild_id: BigDecimal,
 }
 
 /// Rust representation of sql `meetup_events` table.
 #[derive(Debug, Clone)]
+#[allow(unused)]
 struct DBMeetupEvent {
     meetup_event_id: String,
     meetup_group_id: BigDecimal,
@@ -720,22 +578,6 @@ struct DBMeetupEvent {
     start_time: DateTime<FixedOffset>,
     end_time: DateTime<FixedOffset>,
     last_synced: DateTime<FixedOffset>,
-}
-
-type OrphanMeetupEvents = HashSet<String>;
-
-struct SyncUpdates {
-    outdated_discord_events: OutdatedDiscordEvents,
-    orphan_meetup_events: OrphanMeetupEvents,
-}
-
-impl SyncUpdates {
-    fn new() -> Self {
-        Self {
-            outdated_discord_events: OutdatedDiscordEvents::new(),
-            orphan_meetup_events: HashSet::new(),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -769,6 +611,7 @@ mod tests {
     /// mess around with hashing
     #[test]
     fn hashing() {
+        #[allow(unused)]
         struct Person {
             id: u64,
             name: String,

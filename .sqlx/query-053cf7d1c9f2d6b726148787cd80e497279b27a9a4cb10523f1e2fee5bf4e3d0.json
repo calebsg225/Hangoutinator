@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    INSERT INTO discord_events_meetup_events (\n                        discord_event_id,\n                        meetup_event_id\n                    ) VALUES ($1, $2)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "053cf7d1c9f2d6b726148787cd80e497279b27a9a4cb10523f1e2fee5bf4e3d0"
+}
