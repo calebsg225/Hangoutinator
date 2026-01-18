@@ -26,7 +26,9 @@ Create a new discord application [here](https://discord.com/developers/applicati
 
 For the [Welcome Role](#welcoming-verified-members) feature to work, `Server Members Intent` must be
 toggled on. Do this from your bot application page by selecting `Bot` on the sidebar and scrolling to
-`SERVER MEMBERS INTENT`, then flipping on the toggle.
+`Server Members Intent`, then flipping on the toggle.
+
+While here, also toggle on `Message Content Intent`.
 
 ### Server invitation
 
@@ -59,6 +61,8 @@ and scrolling down to `TOKEN`.
 - Rust and Cargo
 - Docker
 
+**IMPORTANT: The commands in `makefile` do not prepend `docker` commands with `sudo`. Depending on your setup, `sudo` is required to run `docker` commands.**
+
 Run `make hangoutinator` in your terminal from the projects main directory to build the bot and run the application. This may take a few minutes the first time. 
 
 The bot and postgres db should now be running.
@@ -85,4 +89,24 @@ A database visualization tool is also included in the application, which should 
 
 ### Welcoming Verified Members
 
-### Managing Event Syncing
+For this feature to work, you need to set a `welcome channel` and a `welcome role`. Do this with the built-in slash command `/set`:
+- `/set welcome_channel`
+- `/set welcome_member_role`
+
+When a member has been verified and has consequently been given the `welcome role`, the bot will send that user a welcome message in the set `welcome channel`.
+
+### Managing Meetup Event Syncing
+
+**IMPORTANT: Single guild use only. The first guild the bot is added to is the only guild this feature will work for.**
+
+For meetup event syncing, use the `/meetup` slash command.
+
+When you want to track a meetup group, use `/meetup track`. The group name inputed must be the url name of the meetup group, eg. in `https://meetup.com/my-meetup-group/events`, the name to input is `my-meetup-group`.
+
+To untrack a meetup group, use `/meetup untrack` in the same way.
+
+View tracked meetup groups with `/meetup list`.
+
+Once you have edited the tracked group list to your liking, you can use `/meetup resync` to manually refetch meetup event data and resync with discord. If you do not do this, data will be refetched automatically at the next resync interval (default is once every hour).
+
+If meetup group data cannot be fetched, it will be skipped and an error will be sent in the logs (use `make logs` in the terminal).

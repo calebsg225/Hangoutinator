@@ -9,6 +9,7 @@ services:
         condition: service_healthy
         restart: true
 
+  # This must be the same name as `PGHOST` in `.env`.
   database:
     image: postgres
     restart: always
