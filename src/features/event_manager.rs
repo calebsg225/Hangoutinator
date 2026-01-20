@@ -463,9 +463,7 @@ async fn add_meetup_event(
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         "#,
         new_event.id,
-        // TODO: deal with cases where meetup event group id
-        // is not an integer
-        BigDecimal::from(new_event.group.id.parse::<u64>().unwrap()),
+        new_event.group.id,
         new_event.group.url_name,
         new_event.title,
         new_event.description,
@@ -562,7 +560,7 @@ struct DBDiscordEvent {
 #[allow(unused)]
 struct DBMeetupEvent {
     meetup_event_id: String,
-    meetup_group_id: BigDecimal,
+    meetup_group_id: String,
     meetup_group_name: String,
     title: String,
     description: String,
