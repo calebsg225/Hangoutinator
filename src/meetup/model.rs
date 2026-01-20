@@ -17,7 +17,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 /// `MeetupEvent` type
 pub struct MeetupEventBuilder {
     group: RawGroup,
-    events: Vec<RawEvent>,
+    events: Vec<RawMeetupEvent>,
     members: BTreeMap<String, RawMember>,
     photos: BTreeMap<String, PhotoInfo>,
     venues: BTreeMap<String, RawVenue>,
@@ -69,7 +69,7 @@ impl MeetupEventBuilder {
         Group::from(self.group.clone(), organizer)
     }
     /// turns a 'raw' event into a 'refined' event
-    fn refine_event(&self, raw_event: RawEvent) -> MeetupEvent {
+    fn refine_event(&self, raw_event: RawMeetupEvent) -> MeetupEvent {
         let organizer = self.refine_member(&self.group.organizer);
         let group = self.refine_group(organizer);
         let creator_member = self.refine_member(&raw_event.creator_member);
@@ -95,7 +95,7 @@ impl MeetupEventBuilder {
 /// data structure matching meetup `Event:` prop
 /// eg. `Event:123456789` or `Event:xilsndkxcksla`
 #[derive(Deserialize, Clone)]
-struct RawEvent {
+struct RawMeetupEvent {
     pub id: String, // id could be a string of characters instead of a string of digits
     pub title: String,
     #[serde(rename = "eventUrl")]
@@ -125,7 +125,7 @@ struct RawEvent {
     pub photo: String, // points to `PhotoInfo:` prop
 }
 
-/// 'refined' meetup event data
+/// 'refined' meetup event data built from a 'RawMeetupEvent' stuct
 #[allow(unused)]
 pub struct MeetupEvent {
     pub id: String,
@@ -145,7 +145,7 @@ pub struct MeetupEvent {
 
 impl MeetupEvent {
     fn from(
-        raw_event: RawEvent,
+        raw_event: RawMeetupEvent,
         group: Group,
         creator_member: Member,
         venue: Venue,
@@ -192,21 +192,15 @@ impl MeetupEvent {
         self.start_time.hash(&mut state);
         state.finish()
     }
-    /// generate an event hash to identify repeated events.
+    /// generate an event hash to identify meetup events that repeat on a weekly basis.
     ///
-    /// A repetition event in this context is an event identical in nature to another meetup
-    /// event, with a different date & time, Ex. a board game event
-    /// that repeats every week.
-    pub fn get_rep_hash(&self) -> u64 {
+    /// All meetup events with this hash are considered to be part of the same weekly collection.
+    pub fn get_weekly_collection_hash(&self) -> u64 {
         let mut state = DefaultHasher::new();
         self.creator_member.id.hash(&mut state);
         self.venue.address.hash(&mut state);
         self.venue.state.hash(&mut state);
-        //self.group.hash(&mut state);
-        // NOTE: ^^^ Should the above be included??
-        // Should events sharing the rep hash include events of any group?
-        //
-        // make the time of the event part of the hash, removing the date
+        // make the time and day of the event part of the hash, removing the date
         self.start_time.time().hash(&mut state);
         self.start_time.weekday().hash(&mut state);
         state.finish()
@@ -226,6 +220,7 @@ struct RawVenue {
     pub country: String,
 }
 
+/// 'refined' venue data built from a 'RawVenue' stuct
 #[derive(Hash)]
 pub struct Venue {
     pub id: String,
@@ -268,6 +263,7 @@ struct RawMember {
     pub photo: String, // ref points to a meetup 'PhotoInfo:' prop
 }
 
+/// 'refined' member data built from a 'RawMember' stuct
 #[derive(Hash)]
 pub struct Member {
     pub id: String,
@@ -309,6 +305,7 @@ struct RawGroup {
     pub organizer: String,
 }
 
+/// 'refined' group data built from a 'RawGroup' stuct
 #[derive(Hash)]
 pub struct Group {
     pub id: String,
@@ -381,11 +378,11 @@ fn extract_fields<T: DeserializeOwned>(
 }
 
 /// Extracts JSON `Event`s and sorts them by earliest date
-fn extract_sorted_events(props: &Map<String, Value>, partial: &str) -> Vec<RawEvent> {
-    let mut events = extract_fields::<RawEvent>(props, partial)
+fn extract_sorted_events(props: &Map<String, Value>, partial: &str) -> Vec<RawMeetupEvent> {
+    let mut events = extract_fields::<RawMeetupEvent>(props, partial)
         .iter()
         .map(|(_, v)| v.clone())
-        .collect::<Vec<RawEvent>>();
+        .collect::<Vec<RawMeetupEvent>>();
     // sort meetup events by date (earliest first)
     events.sort_by(|a, b| a.start_time.cmp(&b.start_time));
     events
@@ -543,8 +540,8 @@ mod tests {
                 "__ref": "PhotoInfo:141414141"
             }
         }"#;
-        let de_event =
-            from_str::<RawEvent>(sample_event).expect("Could not deserialize string into `Event`.");
+        let de_event = from_str::<RawMeetupEvent>(sample_event)
+            .expect("Could not deserialize string into `Event`.");
         assert_eq!(de_event.id, "999888777");
         assert_eq!(de_event.title, "IRS Audit");
         assert_eq!(de_event.hosts.len(), 2);

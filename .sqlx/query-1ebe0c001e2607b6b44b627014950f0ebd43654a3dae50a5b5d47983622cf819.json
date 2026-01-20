@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT duplicate_event_hash \n                    FROM meetup_events \n                    WHERE weekly_collection_hash = $1\n                    ORDER BY start_time ASC\n                    LIMIT 1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "duplicate_event_hash",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1ebe0c001e2607b6b44b627014950f0ebd43654a3dae50a5b5d47983622cf819"
+}

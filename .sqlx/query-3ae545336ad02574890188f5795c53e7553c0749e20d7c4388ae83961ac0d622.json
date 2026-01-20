@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM meetup_events WHERE repeated_event_hash = $1",
+  "query": "SELECT * FROM meetup_events WHERE weekly_collection_hash = $1",
   "describe": {
     "columns": [
       {
@@ -11,7 +11,7 @@
       {
         "ordinal": 1,
         "name": "meetup_group_id",
-        "type_info": "Numeric"
+        "type_info": "Varchar"
       },
       {
         "ordinal": 2,
@@ -45,7 +45,7 @@
       },
       {
         "ordinal": 8,
-        "name": "repeated_event_hash",
+        "name": "weekly_collection_hash",
         "type_info": "Numeric"
       },
       {
@@ -84,5 +84,5 @@
       false
     ]
   },
-  "hash": "dd0a29f46ebdb3909731d55dd359eed9dfbf2dc65213aab056e845483dc2c436"
+  "hash": "3ae545336ad02574890188f5795c53e7553c0749e20d7c4388ae83961ac0d622"
 }

@@ -11,7 +11,7 @@
       {
         "ordinal": 1,
         "name": "meetup_group_id",
-        "type_info": "Numeric"
+        "type_info": "Varchar"
       },
       {
         "ordinal": 2,
@@ -45,7 +45,7 @@
       },
       {
         "ordinal": 8,
-        "name": "repeated_event_hash",
+        "name": "weekly_collection_hash",
         "type_info": "Numeric"
       },
       {

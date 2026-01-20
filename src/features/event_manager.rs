@@ -17,10 +17,8 @@ use crate::meetup::{
 };
 use crate::{Error, IdExt};
 
-// set data to be refetched once every hour
 const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3600);
 const LAST_SYNCED_DELAY: std::time::Duration = std::time::Duration::from_secs(60);
-//const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// starts a background task for keeping discord events synced with
 /// meetup events
@@ -42,7 +40,7 @@ pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
 pub async fn sync_meetup_discord_events(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
     match sync_meetup_events(pool).await {
         Ok(updates) => sync_discord_events(ctx, pool, updates.to_owned()).await?,
-        Err(e) => println!("{}", e),
+        Err(e) => println!("Failed to sync with meetup.com data. Error: {}", e),
     };
     Ok(())
 }
@@ -108,22 +106,23 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
 
 /// Uses the newly updated db to (re)sync discord events
 ///
-/// takes in a set of all rep_hashes that need updating
+/// takes in a set of all unique `collection_hash`s that need updating
 async fn sync_discord_events(
     ctx: &Context,
     pool: &sqlx::PgPool,
     updates: HashSet<BigDecimal>,
 ) -> Result<(), Error> {
+    println!("Syncing [{}] discord events...", updates.len());
     let guild_info = sqlx::query!("SELECT * FROM guilds LIMIT 1")
         .fetch_one(pool)
         .await?;
     let guild_id = GuildId::from_big_decimal(&guild_info.guild_id)?;
 
-    for rep_hash in updates {
+    for collection_hash in &updates {
         let linked_discord_event = sqlx::query_as!(
             DBDiscordEvent,
-            "SELECT * FROM discord_events WHERE repeated_event_hash = $1",
-            rep_hash
+            "SELECT * FROM discord_events WHERE collection_hash = $1",
+            collection_hash
         )
         .fetch_optional(pool)
         .await?;
@@ -132,17 +131,17 @@ async fn sync_discord_events(
             r#"
                     SELECT duplicate_event_hash 
                     FROM meetup_events 
-                    WHERE repeated_event_hash = $1
+                    WHERE weekly_collection_hash = $1
                     ORDER BY start_time ASC
                     LIMIT 1
                 "#,
-            rep_hash
+            collection_hash
         )
         .fetch_optional(pool)
         .await?;
 
         let Some(discord_event) = linked_discord_event else {
-            // no discord event tied to rep hash: create event (if required)
+            // no discord event tied to collection hash: create event (if required)
 
             let Some(first_linked_meetup_event) = first_linked_meetup_event else {
                 continue;
@@ -166,7 +165,7 @@ async fn sync_discord_events(
             .await?;
             continue;
         };
-        // discord event already exists tied to rep hash.
+        // discord event already exists tied to collection hash.
         // if no linked meetup events, delete discord event.
 
         let scheduled_event_id =
@@ -174,8 +173,8 @@ async fn sync_discord_events(
 
         let meetup_events = sqlx::query_as!(
             DBMeetupEvent,
-            "SELECT * FROM meetup_events WHERE repeated_event_hash = $1",
-            rep_hash
+            "SELECT * FROM meetup_events WHERE weekly_collection_hash = $1",
+            collection_hash
         )
         .fetch_all(pool)
         .await?;
@@ -190,6 +189,7 @@ async fn sync_discord_events(
                 pool,
             )
             .await?;
+            continue;
         }
 
         let Some(first_linked_meetup_event) = first_linked_meetup_event else {
@@ -251,6 +251,7 @@ async fn sync_discord_events(
         .await?;
     }
 
+    println!("Synced [{}] discord events.", updates.len());
     Ok(())
 }
 
@@ -258,6 +259,20 @@ enum ManageType {
     Create,
     Edit(ScheduledEventId),
     Delete(ScheduledEventId),
+}
+
+/// builds the first part of a discord event description
+/// from a vec of meetup events
+fn build_description(meetup_events: &Vec<DBMeetupEvent>) -> Vec<String> {
+    let mut description: Vec<String> = Vec::new();
+    description.push("Meetup.com Event Link(s):\n".to_string());
+    for event in meetup_events {
+        description.push(format!(
+            "- https://meetup.com/{}/events/{}\n",
+            event.meetup_group_name, event.meetup_event_id
+        ));
+    }
+    description
 }
 
 /// either create or edit a discord event, built from meetup event(s) data
@@ -274,24 +289,15 @@ async fn manage_scheduled_event(
     guild_id: GuildId,
     pool: &sqlx::PgPool,
 ) -> Result<(), Error> {
-    if existing_duplicates.len() == 0 {
-        return Ok(());
-    };
-    let mut description: Vec<String> = Vec::new();
-    description.push("Meetup.com Event Link(s):\n".to_string());
-    for event in &existing_duplicates {
-        description.push(format!(
-            "- https://meetup.com/{}/events/{}\n",
-            event.meetup_group_name, event.meetup_event_id
-        ));
-    }
-
-    let main_event = &existing_duplicates[0];
-
-    description.push(format!("\n{}", main_event.description));
-
     match manage_type {
         ManageType::Create => {
+            if existing_duplicates.len() == 0 {
+                return Ok(());
+            }
+            let mut description = build_description(&existing_duplicates);
+            let main_event = &existing_duplicates[0];
+            description.push(format!("\n{}", main_event.description));
+
             let new_discord_event = CreateScheduledEvent::new(
                 ScheduledEventType::External,
                 main_event.title.to_string(),
@@ -312,13 +318,13 @@ async fn manage_scheduled_event(
                 r#"
                 INSERT INTO discord_events (
                     discord_event_id, 
-                    repeated_event_hash, 
+                    collection_hash, 
                     duplicate_event_hash,
                     guild_id
                 ) VALUES ($1, $2, $3, $4)
                 "#,
                 new_scheduled_event_id,
-                existing_duplicates[0].repeated_event_hash,
+                existing_duplicates[0].weekly_collection_hash,
                 existing_duplicates[0].duplicate_event_hash,
                 BigDecimal::from(guild_id.get())
             )
@@ -341,6 +347,13 @@ async fn manage_scheduled_event(
             }
         }
         ManageType::Edit(scheduled_event_id) => {
+            if existing_duplicates.len() == 0 {
+                return Ok(());
+            }
+            let mut description = build_description(&existing_duplicates);
+            let main_event = &existing_duplicates[0];
+            description.push(format!("\n{}", main_event.description));
+
             let edit_discord_event = EditScheduledEvent::new()
                 .name(main_event.title.to_string())
                 .description(description.join(""))
@@ -378,7 +391,7 @@ async fn manage_scheduled_event(
 // Syncs a meetup event pulled from meetup.com with an existing meetup event
 // stored in the db
 //
-// Returns a set of rep hashes of meetup events that were changed
+// Returns a set of collection hashes of meetup events that were changed
 async fn update_meetup_event(
     pool: &sqlx::PgPool,
     now: DateTime<Local>,
@@ -398,9 +411,9 @@ async fn update_meetup_event(
     }
 
     let mut res: HashSet<BigDecimal> = HashSet::new();
-    res.insert(BigDecimal::from(old_event.repeated_event_hash));
-    let new_rep_hash = BigDecimal::from(new_event.get_rep_hash());
-    res.insert(new_rep_hash.clone());
+    res.insert(BigDecimal::from(old_event.weekly_collection_hash));
+    let new_weekly_collection_hash = BigDecimal::from(new_event.get_weekly_collection_hash());
+    res.insert(new_weekly_collection_hash.clone());
 
     // update existing event in db with new data
     sqlx::query!(
@@ -411,7 +424,7 @@ async fn update_meetup_event(
                 location = $3,
                 event_hash = $4,
                 duplicate_event_hash = $5,
-                repeated_event_hash = $6,
+                weekly_collection_hash = $6,
                 start_time = $7,
                 end_time = $8,
                 last_synced = $9
@@ -422,7 +435,7 @@ async fn update_meetup_event(
         new_event.venue.location,
         BigDecimal::from(event_hash),
         BigDecimal::from(new_event.get_dup_hash()),
-        new_rep_hash,
+        new_weekly_collection_hash,
         new_event.start_time,
         new_event.end_time,
         now,
@@ -436,13 +449,13 @@ async fn update_meetup_event(
 
 // Adds a meetup event pulled from meetup.com to the db
 //
-// Returns the rep hash of the new meetup event
+// Returns the weekly collection hash of the new meetup event
 async fn add_meetup_event(
     pool: &sqlx::PgPool,
     now: DateTime<Local>,
     new_event: MeetupEvent,
 ) -> Result<BigDecimal, Error> {
-    let rep_hash = BigDecimal::from(new_event.get_rep_hash());
+    let weekly_collection_hash = BigDecimal::from(new_event.get_weekly_collection_hash());
     sqlx::query!(
         r#"
             INSERT INTO meetup_events
@@ -455,7 +468,7 @@ async fn add_meetup_event(
                 location,
                 event_hash,
                 duplicate_event_hash,
-                repeated_event_hash,
+                weekly_collection_hash,
                 start_time,
                 end_time,
                 last_synced
@@ -470,7 +483,7 @@ async fn add_meetup_event(
         new_event.venue.location,
         BigDecimal::from(new_event.get_hash()),
         BigDecimal::from(new_event.get_dup_hash()),
-        rep_hash,
+        weekly_collection_hash,
         new_event.start_time,
         new_event.end_time,
         now
@@ -478,7 +491,7 @@ async fn add_meetup_event(
     .execute(pool)
     .await?;
 
-    Ok(rep_hash)
+    Ok(weekly_collection_hash)
 }
 
 /// Removes meetup events from the db if:
@@ -488,15 +501,15 @@ async fn add_meetup_event(
 ///
 /// This function is designed to be run directly after a sync has occured.
 ///
-/// returns a set of all affected rep_hashes
+/// returns a set of all affected unique collection hashes
 async fn clean(pool: &sqlx::PgPool, now: DateTime<Local>) -> Result<HashSet<BigDecimal>, Error> {
     // select a time before the most recent sync but after the sync before that
     let outdated_last_synced = now
         .checked_sub_signed(TimeDelta::from_std(LAST_SYNCED_DELAY).unwrap())
         .unwrap();
 
-    let expired_or_deleted_meetup_event_rep_hashes = sqlx::query!(
-        "SELECT DISTINCT repeated_event_hash FROM meetup_events WHERE end_time <= $1 OR last_synced <= $2",
+    let expired_or_deleted_meetup_event_collection_hashes = sqlx::query!(
+        "SELECT DISTINCT weekly_collection_hash FROM meetup_events WHERE end_time <= $1 OR last_synced <= $2",
         now,
         outdated_last_synced,
     )
@@ -511,16 +524,13 @@ async fn clean(pool: &sqlx::PgPool, now: DateTime<Local>) -> Result<HashSet<BigD
     .execute(pool)
     .await?;
 
-    Ok(expired_or_deleted_meetup_event_rep_hashes
+    Ok(expired_or_deleted_meetup_event_collection_hashes
         .iter()
-        .map(|r| r.repeated_event_hash.to_owned())
+        .map(|r| r.weekly_collection_hash.to_owned())
         .collect())
 }
 
-pub async fn populate_db_guilds(
-    ctx: &Context,
-    pool: &sqlx::PgPool,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn populate_db_guilds(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
     let active_guilds = util::fetch_all_active_guilds(ctx).await;
     let guilds = sqlx::query!("SELECT COUNT(*) FROM guilds")
         .fetch_one(pool)
@@ -550,7 +560,7 @@ pub async fn populate_db_guilds(
 #[allow(unused)]
 struct DBDiscordEvent {
     discord_event_id: BigDecimal,
-    repeated_event_hash: BigDecimal,
+    collection_hash: BigDecimal,
     duplicate_event_hash: BigDecimal,
     guild_id: BigDecimal,
 }
@@ -567,7 +577,7 @@ struct DBMeetupEvent {
     location: String,
     event_hash: BigDecimal,
     duplicate_event_hash: BigDecimal,
-    repeated_event_hash: BigDecimal,
+    weekly_collection_hash: BigDecimal,
     start_time: DateTime<FixedOffset>,
     end_time: DateTime<FixedOffset>,
     last_synced: DateTime<FixedOffset>,

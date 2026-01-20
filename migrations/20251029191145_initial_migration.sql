@@ -10,8 +10,9 @@ CREATE TABLE meetup_events (
 	event_hash NUMERIC(20) NOT NULL,
 	-- duplicate events across meetup groups
 	duplicate_event_hash NUMERIC(20) NOT NULL,
-	-- repeated events within a meetup group
-	repeated_event_hash NUMERIC(20) NOT NULL,
+	-- groups meetup events that repeat weekly
+	weekly_collection_hash NUMERIC(20) NOT NULL,
+	-- TODO: monthly collection hash?
 	-- time of event
 	start_time timestamptz NOT NULL,
 	end_time timestamptz NOT NULL,
@@ -25,8 +26,10 @@ CREATE TABLE meetup_events (
 CREATE TABLE discord_events (
 	discord_event_id NUMERIC(20) NOT NULL UNIQUE,
 	duplicate_event_hash NUMERIC(20) NOT NULL,
-	repeated_event_hash NUMERIC(20) NOT NULL,
+	-- the discord event is tracking all meetup events with this collection hash
+	collection_hash NUMERIC(20) NOT NULL,
 	guild_id NUMERIC(20) NOT NULL,
+	-- TODO: last_synced?
 	PRIMARY KEY (discord_event_id)
 );
 

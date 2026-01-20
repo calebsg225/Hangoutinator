@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT DISTINCT repeated_event_hash FROM meetup_events WHERE end_time <= $1 OR last_synced <= $2",
+  "query": "SELECT DISTINCT weekly_collection_hash FROM meetup_events WHERE end_time <= $1 OR last_synced <= $2",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "repeated_event_hash",
+        "name": "weekly_collection_hash",
         "type_info": "Numeric"
       }
     ],
@@ -19,5 +19,5 @@
       false
     ]
   },
-  "hash": "73685492b4c0ff3d88fec20548af5b5e614cf6484a721fb2566af32c80020a01"
+  "hash": "0147f8280e9f4719802942d9513dabaa408fdcdc20c0bc97c80219edca6820fc"
 }
