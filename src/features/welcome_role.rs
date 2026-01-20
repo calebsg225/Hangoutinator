@@ -11,8 +11,8 @@ use serenity::{
     prelude::TypeMapKey,
 };
 
-use crate::Error;
 use crate::features::_util as util;
+use crate::{Error, IdExt};
 
 /// each message has 2 strings, one goes before the user mention, one goes after
 const WELCOME_MESSAGES: [[&str; 2]; 3] = [
@@ -33,7 +33,7 @@ async fn is_unverified_member(
     ctx: &Context,
     guild_id: GuildId,
     user_id: UserId,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Error> {
     let data = ctx.data.write().await;
     let unverified_members = data
         .get::<UnverifiedMemberCollection>()
@@ -48,7 +48,7 @@ pub async fn remove_member(
     ctx: &Context,
     guild_id: GuildId,
     user_id: UserId,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Error> {
     let mut data = ctx.data.write().await;
     let unverified_members = data
         .get_mut::<UnverifiedMemberCollection>()
@@ -58,11 +58,7 @@ pub async fn remove_member(
     Ok(unverified_members.remove(&user_id))
 }
 
-pub async fn add_member(
-    ctx: &Context,
-    guild_id: GuildId,
-    user_id: UserId,
-) -> Result<bool, Box<dyn std::error::Error>> {
+pub async fn add_member(ctx: &Context, guild_id: GuildId, user_id: UserId) -> Result<bool, Error> {
     let mut data = ctx.data.write().await;
     let unverified_members = data
         .get_mut::<UnverifiedMemberCollection>()
@@ -78,7 +74,7 @@ pub async fn welcome_verified_member(
     event: &GuildMemberUpdateEvent,
     verified_role_id: &RoleId,
     welcome_channel_id: &ChannelId,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Error> {
     let is_unverified = is_unverified_member(&ctx, event.guild_id, event.user.id).await?;
     let member_has_role = event.roles.contains(&verified_role_id);
 
@@ -94,26 +90,22 @@ pub async fn welcome_verified_member(
 }
 
 /// populates cache with unverified members from all guild
-pub async fn populate_unverified_members(ctx: &Context, pool: &sqlx::PgPool) {
+pub async fn populate_unverified_members(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
     let active_guilds = util::fetch_all_active_guilds(ctx).await;
 
-    let guild_info = sqlx::query!("SELECT * FROM guilds")
-        .fetch_all(pool)
-        .await
-        .unwrap();
+    let guild_info = sqlx::query!("SELECT * FROM guilds").fetch_all(pool).await?;
 
     println!("Active guild count: {}", active_guilds.len());
     for guild in guild_info.iter() {
         if let Some(wri) = &guild.welcome_role_id {
-            let verified_role_id = RoleId::from(wri.to_string().parse::<u64>().unwrap());
+            let verified_role_id = RoleId::from_big_decimal(wri)?;
 
-            let guild_id = GuildId::from(guild.guild_id.to_string().parse::<u64>().unwrap());
+            let guild_id = GuildId::from_big_decimal(&guild.guild_id)?;
 
-            populate_unverified_guild_members(ctx, guild_id, verified_role_id)
-                .await
-                .unwrap();
+            populate_unverified_guild_members(ctx, guild_id, verified_role_id).await?;
         }
     }
+    Ok(())
 }
 
 /// populates cache with unverified members from a specific guild

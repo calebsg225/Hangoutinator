@@ -10,12 +10,12 @@ use serenity::all::{
 };
 use sqlx::types::BigDecimal;
 
-use crate::Error;
 use crate::features::_util as util;
 use crate::meetup::{
     model::MeetupEvent,
     scrape::{self},
 };
+use crate::{Error, IdExt};
 
 // set data to be refetched once every hour
 const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3600);
@@ -117,7 +117,7 @@ async fn sync_discord_events(
     let guild_info = sqlx::query!("SELECT * FROM guilds LIMIT 1")
         .fetch_one(pool)
         .await?;
-    let guild_id = GuildId::from(guild_info.guild_id.to_string().parse::<u64>().unwrap());
+    let guild_id = GuildId::from_big_decimal(&guild_info.guild_id)?;
 
     for rep_hash in updates {
         let linked_discord_event = sqlx::query_as!(
@@ -169,13 +169,8 @@ async fn sync_discord_events(
         // discord event already exists tied to rep hash.
         // if no linked meetup events, delete discord event.
 
-        let scheduled_event_id = ScheduledEventId::from(
-            discord_event
-                .discord_event_id
-                .to_string()
-                .parse::<u64>()
-                .unwrap(),
-        );
+        let scheduled_event_id =
+            ScheduledEventId::from_big_decimal(&discord_event.discord_event_id)?;
 
         let meetup_events = sqlx::query_as!(
             DBMeetupEvent,

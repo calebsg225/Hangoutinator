@@ -4,7 +4,7 @@ use poise::CreateReply;
 use serenity::all::{GuildId, RoleId};
 use sqlx::types::BigDecimal;
 
-use crate::{Context, Error};
+use crate::{Context, Error, IdExt};
 
 /// check if the user either has an access role or is the guild owner
 pub async fn has_access(ctx: Context<'_>) -> Result<bool, Error> {
@@ -39,7 +39,7 @@ async fn get_access_role(pool: &sqlx::PgPool, guild_id: GuildId) -> Option<RoleI
     });
     let record = access_role?;
     let role = record.access_role_id?;
-    let role = RoleId::from(role.to_string().parse::<u64>().unwrap());
+    let role = RoleId::from_big_decimal(&role).unwrap();
     Some(role)
 }
 

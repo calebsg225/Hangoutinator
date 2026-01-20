@@ -4,10 +4,12 @@ use std::{collections::HashMap, env};
 
 use poise::serenity_prelude as serenity;
 
+use ::serenity::all::{ChannelId, GuildId, RoleId, ScheduledEventId};
 use serenity::{
     Client,
     all::{GatewayIntents /*OnlineStatus*/},
 };
+use sqlx::types::BigDecimal;
 
 mod commands;
 mod event_handler;
@@ -20,6 +22,22 @@ struct Data {
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
+trait Id {}
+trait IdExt<T> {
+    fn from_big_decimal(big_decimal: &BigDecimal) -> Result<T, Error>;
+}
+
+impl<T: Id + From<u64>> IdExt<T> for T {
+    fn from_big_decimal(big_decimal: &BigDecimal) -> Result<T, Error> {
+        Ok(T::from(big_decimal.to_string().parse::<u64>()?))
+    }
+}
+
+impl Id for ScheduledEventId {}
+impl Id for ChannelId {}
+impl Id for RoleId {}
+impl Id for GuildId {}
+
 #[tokio::main]
 async fn main() {
     // load env vars
@@ -29,6 +47,7 @@ async fn main() {
     let token = env::var("TOKEN").expect("Expected a TOKEN in the environment.");
 
     // connect to database
+    // TODO: unwraps...
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)
         .connect_with(

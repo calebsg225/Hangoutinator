@@ -9,7 +9,10 @@ use serenity::{
 };
 use sqlx::types::BigDecimal;
 
-use crate::features::{self, event_manager};
+use crate::{
+    IdExt,
+    features::{self, event_manager},
+};
 
 pub struct Handler {
     pub pool: sqlx::PgPool,
@@ -31,17 +34,23 @@ impl EventHandler for Handler {
         .fetch_one(&self.pool)
         .await
         .unwrap();
-        if let Some(wri) = guild_info.welcome_role_id
-            && let Some(wci) = guild_info.welcome_channel_id
+
+        let Some(welcome_role_id) = guild_info.welcome_role_id else {
+            return;
+        };
+        let Some(welcome_channel_id) = guild_info.welcome_channel_id else {
+            return;
+        };
+
+        let role_id = RoleId::from_big_decimal(&welcome_role_id).unwrap();
+        let channel_id = ChannelId::from_big_decimal(&welcome_channel_id).unwrap();
+
+        if let Err(e) =
+            features::welcome_role::welcome_verified_member(&ctx, &event, &role_id, &channel_id)
+                .await
         {
-            let _ = features::welcome_role::welcome_verified_member(
-                &ctx,
-                &event,
-                &RoleId::from(wri.to_string().parse::<u64>().unwrap()),
-                &ChannelId::from(wci.to_string().parse::<u64>().unwrap()),
-            )
-            .await;
-        }
+            println!("Could not welcome member. Error: {}", e);
+        };
     }
 
     /// runs when a member joins a guild
@@ -49,16 +58,12 @@ impl EventHandler for Handler {
         let guild_id = new_member.guild_id;
         let user_id = new_member.user.id;
 
-        println!(
-            "Member with id {} has joined guild with id {}",
-            &guild_id, &user_id
-        );
-
-        // when a member joins a guild, attempt to add them
-        // to `UnverifiedMemberCollection`
-        let _ = features::welcome_role::add_member(&ctx, guild_id, user_id).await;
+        if let Err(e) = features::welcome_role::add_member(&ctx, guild_id, user_id).await {
+            println!("Could not add member to collection. Error: {}", e);
+        };
     }
 
+    /// runs when a member leaves/is removed from a guild
     async fn guild_member_removal(
         &self,
         ctx: Context,
@@ -66,14 +71,9 @@ impl EventHandler for Handler {
         user: User,
         _member_data: Option<Member>,
     ) {
-        println!(
-            "Member with id {} has been removed from guild with id {}.",
-            &guild_id, &user.id
-        );
-
-        // when a member leaves a guild, attempt to remove them
-        // from `UnverifiedMemberCollection`
-        let _ = features::welcome_role::remove_member(&ctx, guild_id, user.id).await;
+        if let Err(e) = features::welcome_role::remove_member(&ctx, guild_id, user.id).await {
+            println!("Could not remove member from collection. Error: {}", e);
+        };
     }
 
     /// runs when the bot is ready
@@ -83,7 +83,9 @@ impl EventHandler for Handler {
         event_manager::populate_db_guilds(&ctx, &self.pool)
             .await
             .expect("Could not populate database with guilds.");
-        features::welcome_role::populate_unverified_members(&ctx, &self.pool).await;
+        features::welcome_role::populate_unverified_members(&ctx, &self.pool)
+            .await
+            .expect("Could not populate cache with unverified members.");
         features::event_manager::run_scheduler(&ctx, &self.pool);
     }
 
