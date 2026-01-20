@@ -3,7 +3,7 @@
 use crate::commands::_util as util;
 use crate::{Context, Error};
 
-/// Enter the URL name of a meetup group you want me to start tracking.
+/// Enter the URL name of a meetup group you want to be tracked in this server
 #[poise::command(slash_command, rename = "track")]
 pub async fn command(
     ctx: Context<'_>,

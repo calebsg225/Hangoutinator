@@ -10,8 +10,10 @@
     - [Running the bot](#running-the-bot)
     - [Other useful commands](#other-useful-commands)
 - [Features](#features)
+    - [Discord Commands](#bot-commands)
+    - [Bot Access Role](#bot-access-role)
     - [Welcoming Verified Members](#welcoming-verified-members)
-    - [Managing Event Syncing](#managing-event-syncing)
+    - [Meetup.com Event Syncing](#meetup.com-event-syncing)
 
 ## Usage
 
@@ -87,6 +89,21 @@ A database visualization tool is also included in the application, which should 
 
 ## Features
 
+### Discord Commands
+
+All discord commands are slash-command only.
+
+|Discord Command|Description|Admin Only|
+|-|-|-|
+|`/set`|Set roles/channels for various bot functions|true|
+|`/meetup`|Manage the [Meetup.com Event Syncing](#meetup.com-event-syncing) feature|true|
+
+### Bot Access Role
+
+By default, 'admin' commands can only be accessed by the owner of the discord server the bot is in. To change this, the bot owner must use `/set bot_access_role`. Users who are given this role will be able to use the 'admin' commands.
+
+**NOTE:** `/set bot_access_role` will remain unaccessable to all but the server owner. Other `/set` subcommands are accessable by those with the role.
+
 ### Welcoming Verified Members
 
 For this feature to work, you need to set a `welcome channel` and a `welcome role`. Do this with the built-in slash command `/set`:
@@ -95,7 +112,7 @@ For this feature to work, you need to set a `welcome channel` and a `welcome rol
 
 When a member has been verified and has consequently been given the `welcome role`, the bot will send that user a welcome message in the set `welcome channel`.
 
-### Managing Meetup Event Syncing
+### Meetup.com Event Syncing
 
 **IMPORTANT: Single guild use only. The first guild the bot is added to is the only guild this feature will work for.**
 
