@@ -7,7 +7,14 @@ use sqlx::types::BigDecimal;
 use crate::commands::_util as util;
 use crate::{Context, Error};
 
-#[poise::command(slash_command, rename = "bot_access_role")]
+/// Users with this role will have access to 'admin' bot commands, ex. `/meetup`, `/set`.
+///
+/// TODO: make a help command to desegnate admin/regular bot commands
+#[poise::command(
+    slash_command,
+    rename = "bot_access_role",
+    check = "util::is_guild_owner"
+)]
 pub async fn command(
     ctx: Context<'_>,
     #[description = "The role to give command access to"] role: Role,
@@ -22,7 +29,7 @@ pub async fn command(
     .await?;
 
     let content = format!(
-        "The new bot access role is {}. Any user who does not have this role or is not the server owner will not be able to use administration commands for this bot.",
+        "The new bot access role is {}. Any user who does not have this role or is not the server owner will not be able to use admin commands.",
         role.mention()
     );
     util::send_reply(&ctx, true, &content).await?;

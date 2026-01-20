@@ -5,6 +5,10 @@ use std::fmt::Write;
 use crate::commands::_util as util;
 use crate::{Context, Error};
 
+/// Display a list of all meetup groups currently being tracked in this server
+///
+/// TODO: make more pleasant to look at/read
+/// TODO: Provide links???
 #[poise::command(slash_command, rename = "list")]
 pub async fn command(ctx: Context<'_>) -> Result<(), Error> {
     let pool = &ctx.data().pool;

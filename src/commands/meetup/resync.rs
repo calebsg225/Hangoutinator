@@ -4,8 +4,8 @@ use crate::commands::_util as util;
 use crate::features::event_manager::sync_meetup_discord_events;
 use crate::{Context, Error};
 
-// TODO: implement a cooldown (very important for this command)
-#[poise::command(slash_command, rename = "resync")]
+/// Force-refetch meetup.com events and resync them with this servers discord events
+#[poise::command(slash_command, rename = "resync", global_cooldown = 65)]
 pub async fn command(ctx: Context<'_>) -> Result<(), Error> {
     let pool1 = ctx.data().pool.clone();
     let ctx1 = ctx.serenity_context().clone();
