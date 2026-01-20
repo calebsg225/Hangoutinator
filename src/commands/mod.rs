@@ -4,12 +4,10 @@ use crate::{Data, Error};
 
 mod _util;
 mod meetup;
-mod ping;
 mod set;
 
 pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
     vec![
-        ping::command(),
         poise::Command {
             subcommands: vec![
                 set::bot_access_role::command(),

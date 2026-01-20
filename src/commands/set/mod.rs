@@ -8,7 +8,13 @@ use crate::{Context, Error};
 
 use crate::commands::_util;
 
-#[poise::command(slash_command, rename = "set", check = "_util::has_access")]
+/// Set roles/channels for various bot functions
+#[poise::command(
+    slash_command,
+    rename = "set",
+    check = "_util::has_access",
+    member_cooldown = 1
+)]
 pub async fn command(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }

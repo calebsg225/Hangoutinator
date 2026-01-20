@@ -5,6 +5,9 @@ use sqlx::types::BigDecimal;
 
 use crate::{Context, Error, commands::_util as util};
 
+// TODO: warn if a welcome role is not set?
+
+/// Set the welcome channel. Members given the welcome role will be welcomed here.
 #[poise::command(slash_command, rename = "welcome_channel")]
 pub async fn command(
     ctx: Context<'_>,

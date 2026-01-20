@@ -9,7 +9,13 @@ use crate::{Context, Error};
 
 use crate::commands::_util;
 
-#[poise::command(slash_command, rename = "meetup", check = "_util::has_access")]
+#[poise::command(
+    slash_command,
+    rename = "meetup",
+    check = "_util::has_access",
+    member_cooldown = 1,
+    ephemeral = true
+)]
 pub async fn command(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }

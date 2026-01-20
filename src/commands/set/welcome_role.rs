@@ -7,6 +7,9 @@ use crate::commands::_util as util;
 use crate::features::welcome_role;
 use crate::{Context, Error};
 
+// TODO: warn if a welcome channel is not set?
+
+/// Set the welcome role. A member given this role will be welcomed in the welcome channel.
 #[poise::command(slash_command, rename = "welcome_member_role")]
 pub async fn command(
     ctx: Context<'_>,

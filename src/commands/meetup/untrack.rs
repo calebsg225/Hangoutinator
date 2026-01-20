@@ -3,10 +3,14 @@
 use crate::commands::_util as util;
 use crate::{Context, Error};
 
+/// Stop tracking a meetup group.
+///
+/// TODO: make it easier to stop tracking meetup groups (so you dont have
+/// to type the whole name every time)
 #[poise::command(slash_command, rename = "untrack")]
 pub async fn command(
     ctx: Context<'_>,
-    #[description = "the name of the meetup group to stop tracking"] group_name: String,
+    #[description = "URL meetup group name to stop tracking"] group_name: String,
 ) -> Result<(), Error> {
     let pool = &ctx.data().pool;
 
@@ -37,7 +41,7 @@ pub async fn command(
     util::send_reply(
         &ctx,
         true,
-        &format!("You will no longer track meetup group `{group_name}`."),
+        &format!("You will no longer track meetup group `{group_name}`.\n For changes to tracked meetup groups to come into effect, you may wait for the next resync, or force the issue with `/meetup resync`."),
     )
     .await?;
     Ok(())
