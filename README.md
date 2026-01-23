@@ -17,7 +17,7 @@
 
 ## Usage
 
-**IMPORTANT: The version of the application on this branch will only work as intended when running on a single discord guild. Multi-guild support is not yet operational.**
+**IMPORTANT: The version of the application on this branch will only work as intended when running on a single discord server. Multi-server support is not yet operational.**
 
 This project is designed to be run on a debian-based linux server, and is therefore being tested
 only on a debian-based linux machine for the moment.
@@ -65,14 +65,14 @@ and scrolling down to `TOKEN`.
 
 **IMPORTANT: The commands in `makefile` do not prepend `docker` commands with `sudo`. Depending on your setup, `sudo` is required to run `docker` commands.**
 
-Run `make hangoutinator` in your terminal from the projects main directory to build the bot and run the application. This may take a few minutes the first time. 
+Run `make start` in your terminal from the projects main directory to build the bot and run the application. This may take a few minutes the first time. 
 
 The bot and postgres db should now be running.
 
-A database visualization tool is also included in the application, which should now be running locally on port `6969`. To log in:
+A database visualization tool is also included in the application, which should now be running locally on port `6969`: `http://localhost:6969/`. To log in:
 
 - `System`: `PostgreSQL`
-- `Server`: `database`
+- `Server`: [PGHOST_FROM_DOT_ENV]
 - `Username`: [PGUSER_FROM_DOT_ENV]
 - `Password`: [PGPASSWORD_FROM_DOT_ENV]
 - `Database`: [PGDATABASE_FROM_DOT_ENV]
@@ -81,10 +81,12 @@ A database visualization tool is also included in the application, which should 
 
 |Command|Function|
 |-|-|
-|`make hangoutinator`|builds bot and runs the entire application|
+|`make start`|builds bot and runs the entire application|
+|`make stop`|stops the application. Data in the db **will persist**.|
 |`make release`|builds the bot image from the dockerfile|
 |`make update`|takes down bot, re-builds, brings bot back online|
-|`make migrate`|run migration on postgres db|
+|`make migrate`|run migrations on postgres db|
+|`make purge`|stops the application. Data in the db **will be deleted**.|
 |`make logs`|prints out bot logs|
 
 ## Features
@@ -114,7 +116,7 @@ When a member has been verified and has consequently been given the `welcome rol
 
 ### Meetup.com Event Syncing
 
-**IMPORTANT: Single guild use only. The first guild the bot is added to is the only guild this feature will work for.**
+**IMPORTANT: Single server use only. The first discord server the bot is added to is the only server this feature will work for.**
 
 For meetup event syncing, use the `/meetup` slash command.
 

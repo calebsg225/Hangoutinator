@@ -11,6 +11,7 @@ services:
 
   # This must be the same name as `PGHOST` in `.env`.
   database:
+    container_name: ${PGHOST}
     image: postgres
     restart: always
     ports:
@@ -25,7 +26,8 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
-  # TODO: persisting database data
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
   # database visualization tool
   adminer:
@@ -33,3 +35,6 @@ services:
     restart: always
     ports:
       - 6969:8080
+
+volumes:
+  pgdata:

@@ -1,9 +1,14 @@
 IMAGE_NAME = hangoutinator
 CONTAINER_NAME = hangbot1
 
-hangoutinator: release
-	docker compose up -d
+start: release
+	docker compose up database -d
 	make migrate
+	docker compose up -d
+	make logs
+
+stop:
+	docker compose down
 
 migrate:
 	cargo sqlx migrate run
@@ -11,16 +16,14 @@ migrate:
 release:
 	docker compose build bot
 
-update:
-	make release
+update: release
 	docker compose down bot
 	docker compose up bot -d
 	make logs
 
-db: 
-	docker compose down database
-	docker compose up database -d
-	make migrate
+# bring down application and remove all data from db
+purge: 
+	docker compose down -v
 
 logs:
 	docker compose logs bot -f

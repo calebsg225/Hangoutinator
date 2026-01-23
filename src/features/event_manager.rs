@@ -57,7 +57,7 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
     if meetup_groups.len() == 0 {
         println!("No meetup groups are being tracked.");
     } else {
-        println!("Syncing [{}] meetup groups...", meetup_groups.len());
+        println!("Fetching from [{}] meetup groups...", meetup_groups.len());
     }
     for group in meetup_groups {
         // scrape meetup site, aggregate into one struct
@@ -71,7 +71,7 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
         // all (immediate upcoming, up to 30) meetup events in this meetup group
         let events: Vec<MeetupEvent> = group_data.get_events();
         println!(
-            "Syncing [{}] events in meetup group `{}`...",
+            "Populating [{}] events in meetup group `{}`...",
             events.len(),
             group.group_name
         );
@@ -94,11 +94,11 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
             };
         }
         println!(
-            "Syncing complete for events in meetup group `{}`.",
+            "Population complete for events in meetup group `{}`.",
             group.group_name
         );
     }
-    println!("Syncing complete for all tracked meetup groups.");
+    println!("Fetching complete for all tracked meetup groups.");
 
     res.extend(clean(pool, now).await?);
     Ok(res)
