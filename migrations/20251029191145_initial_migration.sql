@@ -48,6 +48,15 @@ CREATE TABLE guilds (
 	PRIMARY KEY (guild_id)
 );
 
+-- Create 'linker' table between `meetup_groups` and `guilds` tables
+CREATE TABLE meetup_groups_guilds (
+	group_name VARCHAR(100) NOT NULL,
+	guild_id NUMERIC(20) NOT NULL,
+	PRIMARY KEY (group_name, guild_id),
+	FOREIGN KEY (group_name) REFERENCES meetup_groups(group_name) ON DELETE CASCADE,
+	FOREIGN KEY (guild_id) REFERENCES guilds(guild_id) ON DELETE CASCADE
+);
+
 -- Create 'linker' table between `discord_events` and `meetup_events` tables
 CREATE TABLE discord_events_meetup_events (
 	discord_event_id NUMERIC(20) NOT NULL,

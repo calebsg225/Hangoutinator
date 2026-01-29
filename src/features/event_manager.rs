@@ -51,7 +51,7 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
     let now = Local::now();
     let mut res: HashSet<BigDecimal> = HashSet::new();
     // get all tracked meetup groups
-    let meetup_groups = sqlx::query!("SELECT * FROM meetup_groups")
+    let meetup_groups = sqlx::query!("SELECT DISTINCT group_name FROM meetup_groups_guilds")
         .fetch_all(pool)
         .await?;
     if meetup_groups.len() == 0 {
@@ -530,29 +530,49 @@ async fn clean(pool: &sqlx::PgPool, now: DateTime<Local>) -> Result<HashSet<BigD
         .collect())
 }
 
+/// runs on bot startup: determine the bots active guilds, populates db as required
 pub async fn populate_db_guilds(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
     let active_guilds = util::fetch_all_active_guilds(ctx).await;
-    let guilds = sqlx::query!("SELECT COUNT(*) FROM guilds")
-        .fetch_one(pool)
-        .await?;
-    // if a guild is already in guilds, don't add a new one
-    if let Some(count) = guilds.count
-        && count > 0
-    {
-        return Ok(());
-    };
 
-    // the one guild
-    let one_guild = &active_guilds[0];
-
-    sqlx::query!(
-        "INSERT INTO guilds (guild_id) VALUES ($1)",
-        BigDecimal::from(one_guild.id.get())
-    )
-    .execute(pool)
-    .await?;
+    for guild in active_guilds {
+        let guild_id = BigDecimal::from(guild.id.get());
+        let _was_added = add_guild_to_db(pool, guild_id).await?;
+    }
 
     Ok(())
+}
+
+/// add guild to db if required
+pub async fn add_guild_to_db(pool: &sqlx::PgPool, guild_id: BigDecimal) -> Result<bool, Error> {
+    let has_guild = sqlx::query!("SELECT * FROM guilds WHERE guild_id = $1", guild_id)
+        .fetch_optional(pool)
+        .await?;
+
+    if let None = has_guild {
+        sqlx::query!("INSERT INTO guilds (guild_id) VALUES ($1)", guild_id)
+            .execute(pool)
+            .await?;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+/// delete guild from db if required
+pub async fn remove_guild_from_db(
+    pool: &sqlx::PgPool,
+    guild_id: BigDecimal,
+) -> Result<bool, Error> {
+    let has_guild = sqlx::query!("SELECT * FROM guilds WHERE guild_id = $1", guild_id)
+        .fetch_optional(pool)
+        .await?;
+
+    if let Some(r) = has_guild {
+        sqlx::query!("DELETE FROM guilds WHERE guild_id = $1", r.guild_id)
+            .execute(pool)
+            .await?;
+        return Ok(true);
+    }
+    Ok(false)
 }
 
 /// Rust representation of sql `discord_events` table.

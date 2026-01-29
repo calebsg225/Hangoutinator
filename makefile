@@ -1,6 +1,3 @@
-IMAGE_NAME = hangoutinator
-CONTAINER_NAME = hangbot1
-
 start: release
 	docker compose up database -d
 	make migrate

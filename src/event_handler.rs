@@ -2,8 +2,8 @@
 
 use serenity::{
     all::{
-        ChannelId, Context, EventHandler, GuildId, GuildMemberUpdateEvent, Member, Ready, RoleId,
-        User,
+        ChannelId, Context, EventHandler, Guild, GuildId, GuildMemberUpdateEvent, Member, Ready,
+        RoleId, UnavailableGuild, User,
     },
     async_trait,
 };
@@ -23,8 +23,8 @@ impl EventHandler for Handler {
     async fn guild_member_update(
         &self,
         ctx: Context,
-        _old: Option<Member>, // can't get cache to work...
-        _new: Option<Member>, // can't get cache to work...
+        _old: Option<Member>, // cache feature
+        _new: Option<Member>, // cache feature
         event: GuildMemberUpdateEvent,
     ) {
         let guild_info = sqlx::query!(
@@ -69,17 +69,45 @@ impl EventHandler for Handler {
         ctx: Context,
         guild_id: GuildId,
         user: User,
-        _member_data: Option<Member>,
+        _member_data: Option<Member>, // cache feature
     ) {
         if let Err(e) = features::welcome_role::remove_member(&ctx, guild_id, user.id).await {
             println!("Could not remove member from collection. Error: {}", e);
         };
     }
 
+    /// runs when the bot is added to a guild
+    async fn guild_create(
+        &self,
+        _ctx: Context,
+        guild: Guild,
+        _is_new: Option<bool>, // cache feature
+    ) {
+        let guild_id = BigDecimal::from(guild.id.get());
+        let _was_added = event_manager::add_guild_to_db(&self.pool, guild_id)
+            .await
+            .expect("Failed when attempting to add guild to db.");
+    }
+
+    /// runs when the bot is removed from a guild
+    async fn guild_delete(
+        &self,
+        _ctx: Context,
+        incomplete: UnavailableGuild,
+        _full: Option<Guild>, // cache feature
+    ) {
+        // if `incomplete.unavailable` is false, bot was removed
+        if !incomplete.unavailable {
+            let guild_id = BigDecimal::from(incomplete.id.get());
+            let _was_removed = event_manager::remove_guild_from_db(&self.pool, guild_id)
+                .await
+                .expect("Failed when attempting to remove guild from db.");
+        }
+    }
+
     /// runs when the bot is ready
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
-        // NOTE: in this branch: only allows one guild
         event_manager::populate_db_guilds(&ctx, &self.pool)
             .await
             .expect("Could not populate database with guilds.");
