@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM meetup_events WHERE weekly_collection_hash = $1",
+  "query": "\n                SELECT me.*\n                FROM meetup_events AS me\n                INNER JOIN meetup_groups_guilds AS mgg\n                ON me.meetup_group_name = mgg.group_name\n                WHERE me.weekly_collection_hash = $1\n                AND mgg.guild_id = $2\n            ",
   "describe": {
     "columns": [
       {
@@ -66,6 +66,7 @@
     ],
     "parameters": {
       "Left": [
+        "Numeric",
         "Numeric"
       ]
     },
@@ -84,5 +85,5 @@
       false
     ]
   },
-  "hash": "3ae545336ad02574890188f5795c53e7553c0749e20d7c4388ae83961ac0d622"
+  "hash": "d5f5752c649c598b3df90043aeb4988996b87bad7a4c76414d77ef8eb306a2c7"
 }

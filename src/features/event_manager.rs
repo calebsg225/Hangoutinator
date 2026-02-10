@@ -112,30 +112,55 @@ async fn sync_discord_events(
     pool: &sqlx::PgPool,
     updates: HashSet<BigDecimal>,
 ) -> Result<(), Error> {
-    println!("Syncing [{}] discord events...", updates.len());
-    let guild_info = sqlx::query!("SELECT * FROM guilds LIMIT 1")
-        .fetch_one(pool)
+    // fetch only guilds that are tracking at least one meetup group
+    let guilds_info = sqlx::query!("SELECT DISTINCT guild_id FROM meetup_groups_guilds")
+        .fetch_all(pool)
         .await?;
-    let guild_id = GuildId::from_big_decimal(&guild_info.guild_id)?;
 
-    for collection_hash in &updates {
+    for guild in guilds_info {
+        let guild_id = GuildId::from_big_decimal(&guild.guild_id)?;
+        sync_guild_events(ctx, pool, &updates, guild_id).await?;
+    }
+
+    Ok(())
+}
+
+async fn sync_guild_events(
+    ctx: &Context,
+    pool: &sqlx::PgPool,
+    updates: &HashSet<BigDecimal>,
+    guild_id: GuildId,
+) -> Result<(), Error> {
+    let mut update_count = 0;
+    let mut create_count = 0;
+    let mut delete_count = 0;
+    println!("Syncing events in guild with id [{}]...", guild_id.get());
+    for collection_hash in updates {
         let linked_discord_event = sqlx::query_as!(
             DBDiscordEvent,
-            "SELECT * FROM discord_events WHERE collection_hash = $1",
-            collection_hash
+            "SELECT * FROM discord_events WHERE collection_hash = $1 AND guild_id = $2",
+            collection_hash,
+            BigDecimal::from(guild_id.get()),
         )
         .fetch_optional(pool)
         .await?;
 
+        // fetch the dup hash of the most recent meetup event where:
+        // - the collection hash matches
+        // - the meetup group the event belongs to is being tracked by the gulid
         let first_linked_meetup_event = sqlx::query!(
             r#"
-                    SELECT duplicate_event_hash 
-                    FROM meetup_events 
-                    WHERE weekly_collection_hash = $1
-                    ORDER BY start_time ASC
-                    LIMIT 1
-                "#,
-            collection_hash
+                SELECT me.duplicate_event_hash
+                FROM meetup_events AS me
+                INNER JOIN meetup_groups_guilds AS mgg
+                ON me.meetup_group_name = mgg.group_name
+                WHERE me.weekly_collection_hash = $1
+                AND mgg.guild_id = $2
+                ORDER BY me.start_time ASC
+                LIMIT 1
+            "#,
+            collection_hash,
+            BigDecimal::from(guild_id.get())
         )
         .fetch_optional(pool)
         .await?;
@@ -147,10 +172,22 @@ async fn sync_discord_events(
                 continue;
             };
 
+            // fetch all duplicate meetup events where:
+            // - the dup hash matches
+            // - the meetup group the events belong to are being tracked by the guild
             let existing_duplicates = sqlx::query_as!(
                 DBMeetupEvent,
-                "SELECT * FROM meetup_events WHERE duplicate_event_hash = $1 ORDER BY start_time ASC, meetup_group_name ASC",
-                first_linked_meetup_event.duplicate_event_hash
+                r#"
+                    SELECT me.*
+                    FROM meetup_events AS me
+                    INNER JOIN meetup_groups_guilds AS mgg
+                    ON me.meetup_group_name = mgg.group_name
+                    WHERE me.duplicate_event_hash = $1
+                    AND mgg.guild_id = $2
+                    ORDER BY me.start_time ASC, me.meetup_group_name ASC
+                "#,
+                first_linked_meetup_event.duplicate_event_hash,
+                BigDecimal::from(guild_id.get())
             )
             .fetch_all(pool)
             .await?;
@@ -163,22 +200,34 @@ async fn sync_discord_events(
                 pool,
             )
             .await?;
+            create_count += 1;
             continue;
         };
         // discord event already exists tied to collection hash.
-        // if no linked meetup events, delete discord event.
 
         let scheduled_event_id =
             ScheduledEventId::from_big_decimal(&discord_event.discord_event_id)?;
 
+        // get all meetup events where:
+        // - the collection hash matches
+        // - the meetup group the event belongs to is being tracked by the guild
         let meetup_events = sqlx::query_as!(
             DBMeetupEvent,
-            "SELECT * FROM meetup_events WHERE weekly_collection_hash = $1",
-            collection_hash
+            r#"
+                SELECT me.*
+                FROM meetup_events AS me
+                INNER JOIN meetup_groups_guilds AS mgg
+                ON me.meetup_group_name = mgg.group_name
+                WHERE me.weekly_collection_hash = $1
+                AND mgg.guild_id = $2
+            "#,
+            collection_hash,
+            BigDecimal::from(guild_id.get())
         )
         .fetch_all(pool)
         .await?;
 
+        // if no linked meetup events, delete discord event.
         if meetup_events.len() == 0 {
             // no meetup events: delete discord event
             manage_scheduled_event(
@@ -189,6 +238,7 @@ async fn sync_discord_events(
                 pool,
             )
             .await?;
+            delete_count += 1;
             continue;
         }
 
@@ -196,10 +246,22 @@ async fn sync_discord_events(
             continue;
         };
 
+        // fetch all duplicate meetup events where:
+        // - the dup hash matches
+        // - the meetup group the events belong to are being tracked by the guild
         let existing_duplicates = sqlx::query_as!(
             DBMeetupEvent,
-            "SELECT * FROM meetup_events WHERE duplicate_event_hash = $1 ORDER BY start_time ASC, meetup_group_name ASC",
-            first_linked_meetup_event.duplicate_event_hash
+            r#"
+                SELECT me.*
+                FROM meetup_events AS me
+                INNER JOIN meetup_groups_guilds AS mgg
+                ON me.meetup_group_name = mgg.group_name
+                WHERE me.duplicate_event_hash = $1
+                AND mgg.guild_id = $2
+                ORDER BY me.start_time ASC, me.meetup_group_name ASC
+            "#,
+            first_linked_meetup_event.duplicate_event_hash,
+            BigDecimal::from(guild_id.get())
         )
         .fetch_all(pool)
         .await?;
@@ -214,6 +276,7 @@ async fn sync_discord_events(
         .execute(pool)
         .await?;
 
+        // tie next upcoming duplicate events to the discord event
         // TODO: move to `manage_scheduled_event` Edit()
         for dup in &existing_duplicates {
             sqlx::query!(
@@ -230,6 +293,7 @@ async fn sync_discord_events(
             .await?;
         }
 
+        // update duplicate hash tied to discord event if needed
         // TODO: move to `manage_scheduled_event` Edit()
         if discord_event.duplicate_event_hash != first_linked_meetup_event.duplicate_event_hash {
             sqlx::query!(
@@ -249,9 +313,15 @@ async fn sync_discord_events(
             pool,
         )
         .await?;
+        update_count += 1;
     }
-
-    println!("Synced [{}] discord events.", updates.len());
+    println!(
+        "Synced events in guild with id [{}]:\n- New: [{}]\n- Updated: [{}]\n- Deleted: [{}]",
+        guild_id.get(),
+        create_count,
+        update_count,
+        delete_count
+    );
     Ok(())
 }
 

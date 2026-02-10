@@ -1,38 +1,41 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM guilds LIMIT 1",
+  "query": "SELECT * FROM discord_events WHERE collection_hash = $1 AND guild_id = $2",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "guild_id",
+        "name": "discord_event_id",
         "type_info": "Numeric"
       },
       {
         "ordinal": 1,
-        "name": "welcome_role_id",
+        "name": "duplicate_event_hash",
         "type_info": "Numeric"
       },
       {
         "ordinal": 2,
-        "name": "welcome_channel_id",
+        "name": "collection_hash",
         "type_info": "Numeric"
       },
       {
         "ordinal": 3,
-        "name": "access_role_id",
+        "name": "guild_id",
         "type_info": "Numeric"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Numeric",
+        "Numeric"
+      ]
     },
     "nullable": [
       false,
-      true,
-      true,
-      true
+      false,
+      false,
+      false
     ]
   },
-  "hash": "e577187b62629659e249bbdfbca238b4208f1cd96e4d251322d728c652940050"
+  "hash": "bd944450ff9ae4ada7a528688b9801f79bb617740519975cf0bb7561871edd9b"
 }

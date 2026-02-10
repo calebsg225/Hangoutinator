@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT me.duplicate_event_hash\n                FROM meetup_events AS me\n                INNER JOIN meetup_groups_guilds AS mgg\n                ON me.meetup_group_name = mgg.group_name\n                WHERE me.weekly_collection_hash = $1\n                AND mgg.guild_id = $2\n                ORDER BY me.start_time ASC\n                LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "duplicate_event_hash",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "990d9fd3b0dc84034b67c68f112cbaa5bc467ff105fa8a4923a0794dcc23d1dc"
+}
