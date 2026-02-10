@@ -17,8 +17,6 @@
 
 ## Usage
 
-**IMPORTANT: The version of the application on this branch will only work as intended when running on a single discord server. Multi-server support is not yet operational.**
-
 This project is designed to be run on a debian-based linux server, and is therefore being tested
 only on a debian-based linux machine for the moment.
 
@@ -116,8 +114,6 @@ When a member has been verified and has consequently been given the `welcome rol
 
 ### Meetup.com Event Syncing
 
-**IMPORTANT: Single server use only. The first discord server the bot is added to is the only server this feature will work for.**
-
 For meetup event syncing, use the `/meetup` slash command.
 
 When you want to track a meetup group, use `/meetup track`. The group name inputed must be the url name of the meetup group, eg. in `https://meetup.com/my-meetup-group/events`, the name to input is `my-meetup-group`.
@@ -127,5 +123,7 @@ To untrack a meetup group, use `/meetup untrack` in the same way.
 View tracked meetup groups with `/meetup list`.
 
 Once you have edited the tracked group list to your liking, you can use `/meetup resync` to manually refetch meetup event data and resync with discord. If you do not do this, data will be refetched automatically at the next resync interval (default is once every hour).
+
+**Note:** `/meetup resync` will only resync discord events in the discord server the command was run in. Only a timed global resync will update events in all discord servers.
 
 If meetup group data cannot be fetched, it will be skipped and an error will be sent in the logs (use `make logs` in the terminal).
