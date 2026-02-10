@@ -12,7 +12,7 @@ services:
   # This must be the same name as `PGHOST` in `.env`.
   database:
     container_name: ${PGHOST}
-    image: postgres
+    image: postgres:17
     restart: always
     ports:
       - ${PGPORT}:5432

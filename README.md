@@ -58,8 +58,10 @@ and scrolling down to `TOKEN`.
 
 #### Prerequisites
 
-- Rust and Cargo
-- Docker
+- [Rust and Cargo](https://rust-lang.org/tools/install/)
+- sqlx is also required: `cargo install sqlx-cli --no-default-features --features native-tls,postgres`
+**Note:** if you are getting errors when installing sqlx, make sure these packages are installed: `sudo apt install build-essentials pkg-config libssl-dev`
+- [Docker](https://docs.docker.com/engine/install/ubuntu/#uninstall-old-versions)
 
 **IMPORTANT: The commands in `makefile` do not prepend `docker` commands with `sudo`. Depending on your setup, `sudo` is required to run `docker` commands.**
 
