@@ -11,6 +11,8 @@ use serenity::{
 };
 use sqlx::types::BigDecimal;
 
+use crate::features::event_manager;
+
 mod commands;
 mod event_handler;
 mod features;
@@ -65,6 +67,7 @@ async fn main() {
     // `GUILD_MEMBERS` used to detect role assignment/reassignment
     let intents = GatewayIntents::GUILD_MEMBERS
         | GatewayIntents::MESSAGE_CONTENT
+        | GatewayIntents::GUILDS
         | GatewayIntents::GUILD_MESSAGES;
 
     let handler = event_handler::Handler { pool: pool };
@@ -88,6 +91,7 @@ async fn main() {
         .framework(framework)
         //.status(OnlineStatus::Idle)
         .type_map_insert::<features::welcome_role::UnverifiedMemberCollection>(HashMap::default())
+        .type_map_insert::<event_manager::GroupUpdatesCollection>(HashMap::default())
         .await
         .expect("Could not create client");
 

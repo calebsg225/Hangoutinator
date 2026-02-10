@@ -3,6 +3,7 @@
 use sqlx::types::BigDecimal;
 
 use crate::commands::_util as util;
+use crate::event_manager;
 use crate::{Context, Error};
 
 const EPHEMERAL: bool = true;
@@ -62,6 +63,8 @@ pub async fn command(
         .execute(pool)
         .await?;
     }
+
+    event_manager::toggle_group_update(&ctx.serenity_context(), guild_id, &group_name).await?;
 
     util::send_reply(
         &ctx,

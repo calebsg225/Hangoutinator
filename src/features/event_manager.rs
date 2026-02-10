@@ -1,13 +1,14 @@
 //! src/features/event_manager.rs
 //! periodically pull meetup events and update discord events accordingly
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, FixedOffset, Local, TimeDelta};
 use serenity::all::{
     Context, CreateScheduledEvent, EditScheduledEvent, GuildId, ScheduledEventId,
     ScheduledEventType,
 };
+use serenity::prelude::TypeMapKey;
 use sqlx::types::BigDecimal;
 
 use crate::features::_util as util;
@@ -19,6 +20,12 @@ use crate::{Error, IdExt};
 
 const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3600);
 const LAST_SYNCED_DELAY: std::time::Duration = std::time::Duration::from_secs(60);
+
+pub struct GroupUpdatesCollection;
+
+impl TypeMapKey for GroupUpdatesCollection {
+    type Value = HashMap<GuildId, HashSet<String>>;
+}
 
 /// starts a background task for keeping discord events synced with
 /// meetup events
@@ -145,7 +152,11 @@ async fn sync_guild_events(
     let mut create_count = 0;
     let mut delete_count = 0;
     println!("Syncing events in guild with id [{}]...", guild_id.get());
-    for collection_hash in updates {
+
+    // combine global updates with guild-specific tracking updates
+    let updates = merge_tracking_updates(ctx, pool, &guild_id, updates).await?;
+
+    for collection_hash in &updates {
         let linked_discord_event = sqlx::query_as!(
             DBDiscordEvent,
             "SELECT * FROM discord_events WHERE collection_hash = $1 AND guild_id = $2",
@@ -608,6 +619,81 @@ async fn clean(pool: &sqlx::PgPool, now: DateTime<Local>) -> Result<HashSet<BigD
         .iter()
         .map(|r| r.weekly_collection_hash.to_owned())
         .collect())
+}
+
+/// Track when a meetup group needs updating
+pub async fn toggle_group_update(
+    ctx: &Context,
+    guild_id: &GuildId,
+    meetup_group: &str,
+) -> Result<bool, Error> {
+    let mut data = ctx.data.write().await;
+    let col = data.get_mut::<GroupUpdatesCollection>().unwrap();
+
+    if !col.contains_key(guild_id) {
+        col.insert(guild_id.clone(), HashSet::new());
+    }
+
+    let guild_groups = col.get_mut(guild_id).unwrap();
+
+    Ok(if guild_groups.contains(meetup_group) {
+        guild_groups.remove(meetup_group)
+    } else {
+        guild_groups.insert(meetup_group.to_string())
+    })
+}
+
+/// clear tracked group updates for a specific guild
+async fn clear_group_updates(ctx: &Context, guild_id: &GuildId) -> Result<bool, Error> {
+    let mut data = ctx.data.write().await;
+    let col = data.get_mut::<GroupUpdatesCollection>().unwrap();
+
+    if !col.contains_key(guild_id) {
+        return Ok(false);
+    }
+
+    let _ = col.insert(guild_id.clone(), HashSet::new());
+
+    Ok(true)
+}
+
+async fn merge_tracking_updates(
+    ctx: &Context,
+    pool: &sqlx::PgPool,
+    guild_id: &GuildId,
+    updates: &HashSet<BigDecimal>,
+) -> Result<HashSet<BigDecimal>, Error> {
+    let mut collective_updates: HashSet<BigDecimal> = HashSet::new();
+    {
+        let data = ctx.data.write().await;
+        let col = data.get::<GroupUpdatesCollection>().unwrap();
+        let groups: HashSet<String> = if col.contains_key(&guild_id) {
+            col.get(&guild_id).unwrap().clone()
+        } else {
+            HashSet::new()
+        };
+        for group in &groups {
+            let hashes = sqlx::query!(
+                r#"
+                    SELECT DISTINCT weekly_collection_hash
+                    FROM meetup_events
+                    WHERE meetup_group_name = $1
+                "#,
+                group
+            )
+            .fetch_all(pool)
+            .await?;
+            collective_updates.extend(
+                hashes
+                    .iter()
+                    .map(|h| h.weekly_collection_hash.to_owned())
+                    .collect::<HashSet<BigDecimal>>(),
+            );
+        }
+    }
+    collective_updates.extend(updates.clone());
+    clear_group_updates(ctx, &guild_id).await?;
+    Ok(collective_updates)
 }
 
 /// runs on bot startup: determine the bots active guilds, populates db as required

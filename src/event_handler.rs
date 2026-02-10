@@ -27,6 +27,11 @@ impl EventHandler for Handler {
         _new: Option<Member>, // cache feature
         event: GuildMemberUpdateEvent,
     ) {
+        // don't do anything if the updated user is this bot
+        if ctx.cache.current_user().id == event.user.id {
+            return;
+        }
+
         let guild_info = sqlx::query!(
             "SELECT welcome_role_id, welcome_channel_id FROM guilds WHERE guild_id = $1",
             BigDecimal::from(event.guild_id.get())
@@ -71,6 +76,11 @@ impl EventHandler for Handler {
         user: User,
         _member_data: Option<Member>, // cache feature
     ) {
+        // don't do anything if the user removed is this bot
+        if ctx.cache.current_user().id == user.id {
+            return;
+        }
+
         if let Err(e) = features::welcome_role::remove_member(&ctx, guild_id, user.id).await {
             println!("Could not remove member from collection. Error: {}", e);
         };
@@ -83,10 +93,13 @@ impl EventHandler for Handler {
         guild: Guild,
         _is_new: Option<bool>, // cache feature
     ) {
-        let guild_id = BigDecimal::from(guild.id.get());
-        let _was_added = event_manager::add_guild_to_db(&self.pool, guild_id)
+        let id = guild.id.get();
+        println!("Adding guild with id [{}]...", id);
+        let guild_id = BigDecimal::from(id);
+        let was_added = event_manager::add_guild_to_db(&self.pool, guild_id)
             .await
             .expect("Failed when attempting to add guild to db.");
+        println!("Was added: [{}]", was_added);
     }
 
     /// runs when the bot is removed from a guild
@@ -98,10 +111,13 @@ impl EventHandler for Handler {
     ) {
         // if `incomplete.unavailable` is false, bot was removed
         if !incomplete.unavailable {
-            let guild_id = BigDecimal::from(incomplete.id.get());
-            let _was_removed = event_manager::remove_guild_from_db(&self.pool, guild_id)
+            let id = incomplete.id.get();
+            println!("Removing guild with id [{}]...", id);
+            let guild_id = BigDecimal::from(id);
+            let was_removed = event_manager::remove_guild_from_db(&self.pool, guild_id)
                 .await
                 .expect("Failed when attempting to remove guild from db.");
+            println!("Was removed: [{}]", was_removed);
         }
     }
 
