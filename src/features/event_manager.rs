@@ -354,16 +354,21 @@ enum ManageType {
 
 /// builds the first part of a discord event description
 /// from a vec of meetup events
-fn build_description(meetup_events: &Vec<DBMeetupEvent>) -> Vec<String> {
-    let mut description: Vec<String> = Vec::new();
-    description.push("Meetup.com Event Link(s):\n".to_string());
+fn build_description(meetup_events: &Vec<DBMeetupEvent>) -> String {
+    let mut des: Vec<String> = Vec::new();
+    des.push("Meetup.com Event Link(s):\n".to_string());
     for event in meetup_events {
-        description.push(format!(
+        des.push(format!(
             "- https://meetup.com/{}/events/{}\n",
             event.meetup_group_name, event.meetup_event_id
         ));
     }
-    description
+    des.push(format!("\n{}", meetup_events[0].description));
+    let des = des.join("");
+    if des.len() >= 1000 {
+        return des.split_at(995).0.to_string() + " ...";
+    }
+    des
 }
 
 /// either create or edit a discord event, built from meetup event(s) data
@@ -385,16 +390,15 @@ async fn manage_scheduled_event(
             if existing_duplicates.len() == 0 {
                 return Ok(());
             }
-            let mut description = build_description(&existing_duplicates);
+            let description = build_description(&existing_duplicates);
             let main_event = &existing_duplicates[0];
-            description.push(format!("\n{}", main_event.description));
 
             let new_discord_event = CreateScheduledEvent::new(
                 ScheduledEventType::External,
                 main_event.title.to_string(),
                 main_event.start_time,
             )
-            .description(description.join(""))
+            .description(description)
             .location(main_event.location.to_string())
             .end_time(main_event.end_time);
 
@@ -441,13 +445,12 @@ async fn manage_scheduled_event(
             if existing_duplicates.len() == 0 {
                 return Ok(());
             }
-            let mut description = build_description(&existing_duplicates);
+            let description = build_description(&existing_duplicates);
             let main_event = &existing_duplicates[0];
-            description.push(format!("\n{}", main_event.description));
 
             let edit_discord_event = EditScheduledEvent::new()
                 .name(main_event.title.to_string())
-                .description(description.join(""))
+                .description(description)
                 .location(main_event.location.to_string())
                 .start_time(main_event.start_time)
                 .end_time(main_event.end_time);
