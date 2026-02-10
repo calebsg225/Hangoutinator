@@ -34,12 +34,12 @@ async fn is_unverified_member(
     guild_id: GuildId,
     user_id: UserId,
 ) -> Result<bool, Error> {
-    let data = ctx.data.write().await;
-    let unverified_members = data
-        .get::<UnverifiedMemberCollection>()
-        .unwrap()
-        .get(&guild_id)
-        .unwrap();
+    let mut data = ctx.data.write().await;
+    let col = data.get_mut::<UnverifiedMemberCollection>().unwrap();
+    if !col.contains_key(&guild_id) {
+        col.insert(guild_id.clone(), HashSet::new());
+    }
+    let unverified_members = col.get(&guild_id).unwrap();
     Ok(unverified_members.contains(&user_id))
 }
 
@@ -50,21 +50,21 @@ pub async fn remove_member(
     user_id: UserId,
 ) -> Result<bool, Error> {
     let mut data = ctx.data.write().await;
-    let unverified_members = data
-        .get_mut::<UnverifiedMemberCollection>()
-        .unwrap()
-        .get_mut(&guild_id)
-        .unwrap();
+    let col = data.get_mut::<UnverifiedMemberCollection>().unwrap();
+    if !col.contains_key(&guild_id) {
+        col.insert(guild_id.clone(), HashSet::new());
+    }
+    let unverified_members = col.get_mut(&guild_id).unwrap();
     Ok(unverified_members.remove(&user_id))
 }
 
 pub async fn add_member(ctx: &Context, guild_id: GuildId, user_id: UserId) -> Result<bool, Error> {
     let mut data = ctx.data.write().await;
-    let unverified_members = data
-        .get_mut::<UnverifiedMemberCollection>()
-        .unwrap()
-        .get_mut(&guild_id)
-        .unwrap();
+    let col = data.get_mut::<UnverifiedMemberCollection>().unwrap();
+    if !col.contains_key(&guild_id) {
+        col.insert(guild_id.clone(), HashSet::new());
+    }
+    let unverified_members = col.get_mut(&guild_id).unwrap();
     Ok(unverified_members.insert(user_id))
 }
 
