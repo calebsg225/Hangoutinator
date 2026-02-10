@@ -30,16 +30,26 @@ pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
         let mut interval = tokio::time::interval(REFETCH_MEETUP_DATA_INTERVAL);
         loop {
             interval.tick().await;
-            if let Err(e) = sync_meetup_discord_events(&ctx1, &pool1).await {
+            if let Err(e) = sync_meetup_discord_events(&ctx1, &pool1, None).await {
                 println!("Cound not sync events. Error: {}", e);
             }
         }
     });
 }
 
-pub async fn sync_meetup_discord_events(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
+pub async fn sync_meetup_discord_events(
+    ctx: &Context,
+    pool: &sqlx::PgPool,
+    guild: Option<GuildId>,
+) -> Result<(), Error> {
     match sync_meetup_events(pool).await {
-        Ok(updates) => sync_discord_events(ctx, pool, updates.to_owned()).await?,
+        Ok(updates) => {
+            if let Some(guild_id) = guild {
+                sync_guild_events(ctx, pool, &updates, guild_id).await?;
+            } else {
+                sync_discord_events(ctx, pool, updates.to_owned()).await?;
+            }
+        }
         Err(e) => println!("Failed to sync with meetup.com data. Error: {}", e),
     };
     Ok(())
