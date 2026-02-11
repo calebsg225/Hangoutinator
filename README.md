@@ -58,6 +58,7 @@ and scrolling down to `TOKEN`.
 
 #### Prerequisites
 
+Debian-based Installation:
 - [Rust and Cargo](https://rust-lang.org/tools/install/)
 - sqlx is also required: `cargo install sqlx-cli --no-default-features --features native-tls,postgres`
 **Note:** if you are getting errors when installing sqlx, make sure these packages are installed: `sudo apt install build-essentials pkg-config libssl-dev`

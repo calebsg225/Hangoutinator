@@ -49,6 +49,7 @@ pub async fn sync_meetup_discord_events(
     pool: &sqlx::PgPool,
     guild: Option<GuildId>,
 ) -> Result<(), Error> {
+    println!("[{}]", Local::now());
     match sync_meetup_events(pool).await {
         Ok(updates) => {
             if let Some(guild_id) = guild {
@@ -87,11 +88,7 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
         };
         // all (immediate upcoming, up to 30) meetup events in this meetup group
         let events: Vec<MeetupEvent> = group_data.get_events();
-        println!(
-            "Populating [{}] events in meetup group `{}`...",
-            events.len(),
-            group.group_name
-        );
+        println!("Populating [{}] events...", events.len(),);
         for event in events {
             let event_id = event.id.clone();
             let existing_event = sqlx::query_as!(
@@ -110,10 +107,7 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
                 }
             };
         }
-        println!(
-            "Population complete for events in meetup group `{}`.",
-            group.group_name
-        );
+        println!("Population complete.");
     }
     println!("Fetching complete for all tracked meetup groups.");
 
@@ -336,13 +330,16 @@ async fn sync_guild_events(
         .await?;
         update_count += 1;
     }
-    println!(
-        "Synced events in guild with id [{}]:\n- New: [{}]\n- Updated: [{}]\n- Deleted: [{}]",
-        guild_id.get(),
-        create_count,
-        update_count,
-        delete_count
-    );
+    println!("Synced events in guild with id [{}]", guild_id.get());
+    if create_count > 0 {
+        println!("[{}] New events", create_count);
+    }
+    if update_count > 0 {
+        println!("[{}] Updated events", update_count);
+    }
+    if delete_count > 0 {
+        println!("[{}] Deleted events", delete_count);
+    }
     Ok(())
 }
 
