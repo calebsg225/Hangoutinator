@@ -54,7 +54,7 @@ impl EventHandler for Handler {
             features::welcome_role::welcome_verified_member(&ctx, &event, &role_id, &channel_id)
                 .await
         {
-            println!("Could not welcome member. Error: {}", e);
+            println!("[ERROR] Could not welcome member. Error: {}", e);
         };
     }
 
@@ -64,7 +64,7 @@ impl EventHandler for Handler {
         let user_id = new_member.user.id;
 
         if let Err(e) = features::welcome_role::add_member(&ctx, guild_id, user_id).await {
-            println!("Could not add member to collection. Error: {}", e);
+            println!("[ERROR] Could not add member to collection. Error: {}", e);
         };
     }
 
@@ -82,7 +82,10 @@ impl EventHandler for Handler {
         }
 
         if let Err(e) = features::welcome_role::remove_member(&ctx, guild_id, user.id).await {
-            println!("Could not remove member from collection. Error: {}", e);
+            println!(
+                "[ERROR] Could not remove member from collection. Error: {}",
+                e
+            );
         };
     }
 
@@ -94,12 +97,12 @@ impl EventHandler for Handler {
         _is_new: Option<bool>, // cache feature
     ) {
         let id = guild.id.get();
-        println!("Adding guild with id [{}]...", id);
+        println!("[GUILD_CREATE] Adding guild with id [{}]...", id);
         let guild_id = BigDecimal::from(id);
         let was_added = event_manager::add_guild_to_db(&self.pool, guild_id)
             .await
-            .expect("Failed when attempting to add guild to db.");
-        println!("Was added: [{}]", was_added);
+            .expect("[ERROR] Failed when attempting to add guild to db.");
+        println!("[GUILD_CREATE] Was added: [{}]", was_added);
     }
 
     /// runs when the bot is removed from a guild
@@ -110,30 +113,31 @@ impl EventHandler for Handler {
         _full: Option<Guild>, // cache feature
     ) {
         // if `incomplete.unavailable` is false, bot was removed
+        // TODO: clean up discord events and db?
         if !incomplete.unavailable {
             let id = incomplete.id.get();
-            println!("Removing guild with id [{}]...", id);
+            println!("[GUILD_DELETE] Removing guild with id [{}]...", id);
             let guild_id = BigDecimal::from(id);
             let was_removed = event_manager::remove_guild_from_db(&self.pool, guild_id)
                 .await
-                .expect("Failed when attempting to remove guild from db.");
-            println!("Was removed: [{}]", was_removed);
+                .expect("[ERROR] Failed when attempting to remove guild from db.");
+            println!("[GUILD_DELETE] Was removed: [{}]", was_removed);
         }
     }
 
     /// runs when the bot is ready
     async fn ready(&self, ctx: Context, ready: Ready) {
-        println!("{} is connected!", ready.user.name);
+        println!("[READY] {} is connected!", ready.user.name);
         event_manager::populate_db_guilds(&ctx, &self.pool)
             .await
-            .expect("Could not populate database with guilds.");
+            .expect("[ERROR] Could not populate database with guilds.");
         features::welcome_role::populate_unverified_members(&ctx, &self.pool)
             .await
-            .expect("Could not populate cache with unverified members.");
+            .expect("[ERROR] Could not populate cache with unverified members.");
         features::event_manager::run_scheduler(&ctx, &self.pool);
     }
 
     async fn shards_ready(&self, _ctx: Context, total_shards: u32) {
-        println!("{} shard(s) ready", total_shards);
+        println!("[READY] {} shard(s) ready", total_shards);
     }
 }

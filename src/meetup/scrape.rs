@@ -6,6 +6,7 @@
 //! change the structure, this will no longer work as expected.
 //#![allow(unused)]
 
+use reqwest::StatusCode;
 use scraper::{Html, Selector};
 use serde_json::{Map, Value};
 use std::collections::HashMap;
@@ -45,11 +46,13 @@ fn isolate_props(json: &str) -> Option<Map<String, Value>> {
 fn fetch_json(group_name: &str) -> Result<String, Error> {
     let url = build_url(group_name);
     let response = reqwest::blocking::get(&url)?;
-    println!(
-        "Response status fetching from `{}`: {}",
-        url,
-        response.status()
-    );
+    if response.status() != StatusCode::OK {
+        println!(
+            "Response status fetching from `{}`: {}",
+            url,
+            response.status()
+        );
+    }
 
     let document = Html::parse_document(&response.text()?);
 

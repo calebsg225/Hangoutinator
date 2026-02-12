@@ -32,16 +32,16 @@ impl TypeMapKey for GroupUpdatesCollection {
 pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
     let pool1 = pool.clone();
     let ctx1 = ctx.clone();
-    println!("scheduler spawned");
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(REFETCH_MEETUP_DATA_INTERVAL);
         loop {
             interval.tick().await;
             if let Err(e) = sync_meetup_discord_events(&ctx1, &pool1).await {
-                println!("Cound not sync events. Error: {}", e);
+                println!("[ERROR] Cound not sync events. Error: {}", e);
             }
         }
     });
+    println!("[SCHEDULER] Meetup.com event scheduler spawned successfully.");
 }
 
 pub async fn sync_meetup_discord_events(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
@@ -50,7 +50,7 @@ pub async fn sync_meetup_discord_events(ctx: &Context, pool: &sqlx::PgPool) -> R
         Ok(updates) => {
             sync_discord_events(ctx, pool, updates.to_owned()).await?;
         }
-        Err(e) => println!("Failed to sync with meetup.com data. Error: {}", e),
+        Err(e) => println!("[ERROR] Failed to sync with meetup.com data. Error: {}", e),
     };
     Ok(())
 }
@@ -65,22 +65,23 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
         .fetch_all(pool)
         .await?;
     if meetup_groups.len() == 0 {
-        println!("No meetup groups are being tracked.");
+        println!("[FETCH] No meetup groups are being tracked.");
     } else {
-        println!("Fetching from [{}] meetup groups...", meetup_groups.len());
+        println!("[FETCH] from [{}] meetup groups...", meetup_groups.len());
     }
-    for group in meetup_groups {
+    let mut total_events = 0;
+    for group in &meetup_groups {
         // scrape meetup site, aggregate into one struct
         let Ok(group_data) = scrape::get_meetup_group_data(&group.group_name) else {
             println!(
-                "Failed to fetch meetup data for meetup group `{}`",
+                "[ERROR] Failed to fetch meetup data for meetup group `{}`",
                 group.group_name
             );
             continue;
         };
         // all (immediate upcoming, up to 30) meetup events in this meetup group
         let events: Vec<MeetupEvent> = group_data.get_events();
-        println!("Populating [{}] events...", events.len(),);
+        total_events += events.len();
         for event in events {
             let event_id = event.id.clone();
             let existing_event = sqlx::query_as!(
@@ -99,9 +100,12 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
                 }
             };
         }
-        println!("Population complete.");
     }
-    println!("Fetching complete for all tracked meetup groups.");
+    println!(
+        "[FETCH] [{}] meetup events from [{}] tracked meetup groups.",
+        total_events,
+        meetup_groups.len()
+    );
 
     res.extend(clean(pool, now).await?);
     Ok(res)
@@ -161,7 +165,7 @@ pub async fn sync_guild_events(
     let mut update_count = 0;
     let mut create_count = 0;
     let mut delete_count = 0;
-    println!("Syncing events in guild with id [{}]...", guild_id.get());
+    println!("[SYNC] events in guild with id [{}]...", guild_id.get());
 
     // combine global updates with guild-specific tracking updates
     let updates = merge_tracking_updates(ctx, pool, &guild_id, updates).await?;
@@ -349,7 +353,7 @@ pub async fn sync_guild_events(
         .await?;
         update_count += 1;
     }
-    println!("Synced events in guild with id [{}]", guild_id.get());
+    println!("[SYNC] complete.");
     if create_count > 0 {
         println!("[{}] New events", create_count);
     }

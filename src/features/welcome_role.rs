@@ -89,13 +89,10 @@ pub async fn welcome_verified_member(
     Ok(())
 }
 
-/// populates cache with unverified members from all guild
+/// populates cache with unverified members from all guilds
 pub async fn populate_unverified_members(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
-    let active_guilds = util::fetch_all_active_guilds(ctx).await;
-
     let guild_info = sqlx::query!("SELECT * FROM guilds").fetch_all(pool).await?;
 
-    println!("Active guild count: {}", active_guilds.len());
     for guild in guild_info.iter() {
         if let Some(wri) = &guild.welcome_role_id {
             let verified_role_id = RoleId::from_big_decimal(wri)?;
