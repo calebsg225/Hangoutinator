@@ -1,7 +1,7 @@
 services:
   bot:
     build: .
-    image: hangbot-ps-one-guild
+    image: hangbot-multi-guild
     restart: always
     env_file: ./.env
     depends_on:
