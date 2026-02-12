@@ -122,7 +122,7 @@ async fn sync_discord_events(
 
     for guild in guilds_info {
         let guild_id = GuildId::from_big_decimal(&guild.guild_id)?;
-        sync_guild_events(ctx, pool, &updates, guild_id).await?;
+        sync_guild_events(ctx, pool, &updates, guild_id, false).await?;
     }
 
     Ok(())
@@ -156,6 +156,7 @@ pub async fn sync_guild_events(
     pool: &sqlx::PgPool,
     updates: &HashSet<BigDecimal>,
     guild_id: GuildId,
+    preserve_tracking_changes: bool,
 ) -> Result<(), Error> {
     let mut update_count = 0;
     let mut create_count = 0;
@@ -165,6 +166,9 @@ pub async fn sync_guild_events(
     // combine global updates with guild-specific tracking updates
     let updates = merge_tracking_updates(ctx, pool, &guild_id, updates).await?;
 
+    if !preserve_tracking_changes {
+        clear_group_updates(ctx, &guild_id).await?;
+    }
     for collection_hash in &updates {
         let linked_discord_event = sqlx::query_as!(
             DBDiscordEvent,
@@ -707,7 +711,6 @@ async fn merge_tracking_updates(
         }
     }
     collective_updates.extend(updates.clone());
-    clear_group_updates(ctx, &guild_id).await?;
     Ok(collective_updates)
 }
 

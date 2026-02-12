@@ -19,7 +19,9 @@ pub async fn command(ctx: Context<'_>) -> Result<(), Error> {
         let hashes = event_manager::get_all_guild_collection_hashes(&pool1, &guild_id)
             .await
             .expect("Could not fetch hashes.");
-        if let Err(e) = event_manager::sync_guild_events(&ctx1, &pool1, &hashes, guild_id).await {
+        if let Err(e) =
+            event_manager::sync_guild_events(&ctx1, &pool1, &hashes, guild_id, true).await
+        {
             println!("Could not sync events. Error: {}", e);
         }
     });
