@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT me.weekly_collection_hash\n            FROM meetup_events AS me\n            INNER JOIN meetup_groups_guilds AS mgg\n            ON me.meetup_group_name = mgg.group_name\n            WHERE mgg.guild_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "weekly_collection_hash",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b2113d25a920a5b72f6a9766b0acf0b73af8a70cba75bc3d2e4e0a3eb6563e54"
+}

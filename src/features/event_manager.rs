@@ -37,26 +37,18 @@ pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
         let mut interval = tokio::time::interval(REFETCH_MEETUP_DATA_INTERVAL);
         loop {
             interval.tick().await;
-            if let Err(e) = sync_meetup_discord_events(&ctx1, &pool1, None).await {
+            if let Err(e) = sync_meetup_discord_events(&ctx1, &pool1).await {
                 println!("Cound not sync events. Error: {}", e);
             }
         }
     });
 }
 
-pub async fn sync_meetup_discord_events(
-    ctx: &Context,
-    pool: &sqlx::PgPool,
-    guild: Option<GuildId>,
-) -> Result<(), Error> {
+pub async fn sync_meetup_discord_events(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
     println!("[{}]", Local::now());
     match sync_meetup_events(pool).await {
         Ok(updates) => {
-            if let Some(guild_id) = guild {
-                sync_guild_events(ctx, pool, &updates, guild_id).await?;
-            } else {
-                sync_discord_events(ctx, pool, updates.to_owned()).await?;
-            }
+            sync_discord_events(ctx, pool, updates.to_owned()).await?;
         }
         Err(e) => println!("Failed to sync with meetup.com data. Error: {}", e),
     };
@@ -136,7 +128,30 @@ async fn sync_discord_events(
     Ok(())
 }
 
-async fn sync_guild_events(
+pub async fn get_all_guild_collection_hashes(
+    pool: &sqlx::PgPool,
+    guild_id: &GuildId,
+) -> Result<HashSet<BigDecimal>, Error> {
+    let hashes = sqlx::query!(
+        r#"
+            SELECT DISTINCT me.weekly_collection_hash
+            FROM meetup_events AS me
+            INNER JOIN meetup_groups_guilds AS mgg
+            ON me.meetup_group_name = mgg.group_name
+            WHERE mgg.guild_id = $1
+        "#,
+        BigDecimal::from(guild_id.get())
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(hashes
+        .iter()
+        .map(|h| h.weekly_collection_hash.to_owned())
+        .collect())
+}
+
+pub async fn sync_guild_events(
     ctx: &Context,
     pool: &sqlx::PgPool,
     updates: &HashSet<BigDecimal>,

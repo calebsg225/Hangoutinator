@@ -125,8 +125,8 @@ To untrack a meetup group, use `/meetup untrack` in the same way.
 
 View tracked meetup groups with `/meetup list`.
 
-Once you have edited the tracked group list to your liking, you can use `/meetup resync` to manually refetch meetup event data and resync with discord. If you do not do this, data will be refetched automatically at the next resync interval (default is once every hour).
+Once you have edited the tracked group list to your liking, you can use `/meetup refetch` to manually refetch meetup event data and resync with discord. If you do not do this, data will be refetched automatically at the next resync interval (default is once every hour).
 
-**Note:** `/meetup resync` will only resync discord events in the discord server the command was run in. Only a timed global resync will update events in all discord servers.
+A similar command to `/meetup refetch` is available called `/meetup resync`. When `/meetup resync` is run in a discord server, that servers discord events will be updated with data already available in the database; it will not fetch new data from meetup.com. This is useful in case there is a communication error and events get out of sync.
 
 If meetup group data cannot be fetched, it will be skipped and an error will be sent in the logs (use `make logs` in the terminal).
