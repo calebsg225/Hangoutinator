@@ -29,6 +29,8 @@ CREATE TABLE discord_events (
 	-- the discord event is tracking all meetup events with this collection hash
 	collection_hash NUMERIC(20) NOT NULL,
 	guild_id NUMERIC(20) NOT NULL,
+	start_time timestamptz NOT NULL,
+	end_time timestamptz NOT NULL,
 	-- TODO: last_synced?
 	PRIMARY KEY (discord_event_id)
 );

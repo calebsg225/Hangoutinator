@@ -22,6 +22,16 @@
         "ordinal": 3,
         "name": "guild_id",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "start_time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "end_time",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -31,6 +41,8 @@
       ]
     },
     "nullable": [
+      false,
+      false,
       false,
       false,
       false,

@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO discord_events (\n                    discord_event_id, \n                    collection_hash, \n                    duplicate_event_hash,\n                    guild_id,\n                    start_time,\n                    end_time\n                ) VALUES ($1, $2, $3, $4, $5, $6)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "be798263a30d9f7ecf0c9840e543f126a1c67bf9f8a3db10bd3b44ef302a0029"
+}

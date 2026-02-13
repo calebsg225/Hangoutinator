@@ -129,6 +129,8 @@ async fn sync_discord_events(
         sync_guild_events(ctx, pool, &updates, guild_id, false).await?;
     }
 
+    // TODO: clean() functionality should be useable without refetching
+
     Ok(())
 }
 
@@ -169,6 +171,8 @@ pub async fn sync_guild_events(
 
     // combine global updates with guild-specific tracking updates
     let updates = merge_tracking_updates(ctx, pool, &guild_id, updates).await?;
+
+    clean_discord_events(pool, Local::now(), &guild_id).await?;
 
     if !preserve_tracking_changes {
         clear_group_updates(ctx, &guild_id).await?;
@@ -435,13 +439,17 @@ async fn manage_scheduled_event(
                     discord_event_id, 
                     collection_hash, 
                     duplicate_event_hash,
-                    guild_id
-                ) VALUES ($1, $2, $3, $4)
+                    guild_id,
+                    start_time,
+                    end_time
+                ) VALUES ($1, $2, $3, $4, $5, $6)
                 "#,
                 new_scheduled_event_id,
-                existing_duplicates[0].weekly_collection_hash,
-                existing_duplicates[0].duplicate_event_hash,
-                BigDecimal::from(guild_id.get())
+                main_event.weekly_collection_hash,
+                main_event.duplicate_event_hash,
+                BigDecimal::from(guild_id.get()),
+                main_event.start_time,
+                main_event.end_time
             )
             .execute(pool)
             .await?;
@@ -644,6 +652,22 @@ async fn clean(pool: &sqlx::PgPool, now: DateTime<Local>) -> Result<HashSet<BigD
         .collect())
 }
 
+/// removes expired discord events in a guild
+async fn clean_discord_events(
+    pool: &sqlx::PgPool,
+    now: DateTime<Local>,
+    guild_id: &GuildId,
+) -> Result<(), Error> {
+    sqlx::query!(
+        "DELETE FROM discord_events WHERE end_time <= $1 AND guild_id = $2",
+        now,
+        BigDecimal::from(guild_id.get())
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /// Track when a meetup group needs updating
 pub async fn toggle_group_update(
     ctx: &Context,
@@ -771,6 +795,8 @@ struct DBDiscordEvent {
     collection_hash: BigDecimal,
     duplicate_event_hash: BigDecimal,
     guild_id: BigDecimal,
+    start_time: DateTime<FixedOffset>,
+    end_time: DateTime<FixedOffset>,
 }
 
 /// Rust representation of sql `meetup_events` table.

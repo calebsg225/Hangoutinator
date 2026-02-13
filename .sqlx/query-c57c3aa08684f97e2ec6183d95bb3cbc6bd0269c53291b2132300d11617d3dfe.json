@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM discord_events WHERE end_time <= $1 AND guild_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c57c3aa08684f97e2ec6183d95bb3cbc6bd0269c53291b2132300d11617d3dfe"
+}
