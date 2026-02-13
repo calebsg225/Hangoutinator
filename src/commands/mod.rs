@@ -11,7 +11,7 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
     vec![
         poise::Command {
             subcommands: vec![owner::set_bot_access_role::command()],
-            ..set::command()
+            ..owner::command()
         },
         poise::Command {
             subcommands: vec![
