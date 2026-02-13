@@ -69,7 +69,7 @@ pub async fn command(
     util::send_reply(
         &ctx,
         EPHEMERAL,
-        &format!("You will no longer track meetup group `{group_name}`.\n For changes to tracked meetup groups to come into effect, you may wait for the next resync, or force the issue with `/meetup resync`."),
+        &format!("You will no longer track meetup group `{group_name}`.\n For changes to tracked meetup groups to come into effect, you may wait for the next refetch, or force the issue with `/meetup refetch`."),
     )
     .await?;
     Ok(())
