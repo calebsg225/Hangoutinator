@@ -23,6 +23,7 @@ pub async fn has_access(ctx: Context<'_>) -> Result<bool, Error> {
     Ok(has_access)
 }
 
+#[allow(unused)]
 pub async fn is_guild_owner(ctx: Context<'_>) -> Result<bool, Error> {
     let guild = ctx.http().get_guild(ctx.guild_id().unwrap()).await?;
     let is_guild_owner = guild.owner_id == ctx.author().id;
