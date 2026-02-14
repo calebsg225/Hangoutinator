@@ -16,9 +16,6 @@ pub async fn has_access(ctx: Context<'_>) -> Result<bool, Error> {
     let guild = ctx.http().get_guild(guild_id).await?;
     let is_guild_owner = guild.owner_id == ctx.author().id;
     let has_access = has_role || is_guild_owner;
-    println!("has role: {}", has_role);
-    println!("has access: {}", has_access);
-    println!("has is_guild_owner: {}", is_guild_owner);
     if !has_access {
         let content = "You do not have access to this command.";
         send_reply(&ctx, true, &content).await?;
@@ -49,9 +46,7 @@ async fn get_access_role(pool: &sqlx::PgPool, guild_id: GuildId) -> Option<RoleI
     });
     let record = access_role?;
     let role = record.access_role_id?;
-    println!("role: {}", role);
     let role = RoleId::from_big_decimal(&role).unwrap();
-    println!("roleid: {}", role);
     Some(role)
 }
 

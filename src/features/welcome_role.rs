@@ -14,11 +14,18 @@ use serenity::{
 use crate::features::_util as util;
 use crate::{Error, IdExt};
 
-/// each message has 2 strings, one goes before the user mention, one goes after
-const WELCOME_MESSAGES: [[&str; 2]; 3] = [
-    ["Welcome, ", "!"],
-    ["Glad you're here ", "."],
-    ["Hello ", ", welcome aboard!"],
+/// welcome messages to choose from at random that will be displayed after mentioning the user
+const WELCOME_MESSAGES: [&str; 10] = [
+    "Welcome to the side quest.",
+    "Achievement unlocked: Socializing after 25.",
+    "New member detected. Syncing sarcasm settings…",
+    "Adulting optional. Memes mandatory.",
+    "Where calendars are full but we still show up.",
+    "This server runs on caffeine and mild existential humor.",
+    "You’ve entered the “figuring it out” phase of life.",
+    "This is your sign to mute your responsibilities for a bit.",
+    "You made it. Vibes are strong, expectations are low.",
+    "Welcome to the chaos respectfully organized.",
 ];
 
 // collection to keep track of members without the verified role
@@ -131,6 +138,6 @@ pub async fn populate_unverified_guild_members(
 
 /// build a welcome message, choosing one at random
 fn build_welcome_message(user_name: Mention) -> String {
-    let [start, end] = WELCOME_MESSAGES.choose(&mut rand::rng()).unwrap();
-    format!("{}{}{}", start, user_name, end)
+    let msg = WELCOME_MESSAGES.choose(&mut rand::rng()).unwrap();
+    format!("{} {}", user_name, msg)
 }
