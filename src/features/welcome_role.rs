@@ -35,26 +35,23 @@ impl TypeMapKey for UnverifiedMemberCollection {
     type Value = HashMap<GuildId, HashSet<UserId>>;
 }
 
-/// Checks if `UnverifiedMemberCollection` contains a specific member in a specific guild
-async fn is_unverified_member(
-    ctx: &Context,
-    guild_id: GuildId,
-    user_id: UserId,
-) -> Result<bool, Error> {
-    let mut data = ctx.data.write().await;
-    let col = data.get_mut::<UnverifiedMemberCollection>().unwrap();
-    if !col.contains_key(&guild_id) {
-        col.insert(guild_id.clone(), HashSet::new());
-    }
-    let unverified_members = col.get(&guild_id).unwrap();
-    Ok(unverified_members.contains(&user_id))
+pub enum MemberAction {
+    IsUnverified,
+    Add,
+    Remove,
 }
 
-/// Removes a verified member from `UnverifiedMembersCollection`
-pub async fn remove_member(
+/// Compares a user to data stored in cache, doing one of three actions:
+///
+/// - Checking whether the user has been verified: `MemberAction::IsUnverified`.
+/// Will return true if the member is unverified.
+/// - Adding a user to the `UnverifiedMemberCollection` in a guild
+/// - Removing a user from the `UnverifiedMemberCollection` in a guild
+pub async fn execute_member_action(
     ctx: &Context,
     guild_id: GuildId,
     user_id: UserId,
+    action: MemberAction,
 ) -> Result<bool, Error> {
     let mut data = ctx.data.write().await;
     let col = data.get_mut::<UnverifiedMemberCollection>().unwrap();
@@ -62,17 +59,12 @@ pub async fn remove_member(
         col.insert(guild_id.clone(), HashSet::new());
     }
     let unverified_members = col.get_mut(&guild_id).unwrap();
-    Ok(unverified_members.remove(&user_id))
-}
-
-pub async fn add_member(ctx: &Context, guild_id: GuildId, user_id: UserId) -> Result<bool, Error> {
-    let mut data = ctx.data.write().await;
-    let col = data.get_mut::<UnverifiedMemberCollection>().unwrap();
-    if !col.contains_key(&guild_id) {
-        col.insert(guild_id.clone(), HashSet::new());
-    }
-    let unverified_members = col.get_mut(&guild_id).unwrap();
-    Ok(unverified_members.insert(user_id))
+    let res = match action {
+        MemberAction::IsUnverified => unverified_members.contains(&user_id),
+        MemberAction::Add => unverified_members.insert(user_id),
+        MemberAction::Remove => unverified_members.remove(&user_id),
+    };
+    Ok(res)
 }
 
 /// checks if a member has just been verified. If so, sends a welcome message.
@@ -82,11 +74,17 @@ pub async fn welcome_verified_member(
     verified_role_id: &RoleId,
     welcome_channel_id: &ChannelId,
 ) -> Result<(), Error> {
-    let is_unverified = is_unverified_member(&ctx, event.guild_id, event.user.id).await?;
+    let is_unverified = execute_member_action(
+        &ctx,
+        event.guild_id,
+        event.user.id,
+        MemberAction::IsUnverified,
+    )
+    .await?;
     let member_has_role = event.roles.contains(&verified_role_id);
 
     if is_unverified && member_has_role {
-        remove_member(&ctx, event.guild_id, event.user.id).await?;
+        execute_member_action(&ctx, event.guild_id, event.user.id, MemberAction::Remove).await?;
         let welcome_message = build_welcome_message(event.user.mention());
         let _ = welcome_channel_id
             .send_message(&ctx.http, CreateMessage::new().content(welcome_message))

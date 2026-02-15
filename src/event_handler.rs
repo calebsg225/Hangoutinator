@@ -63,7 +63,14 @@ impl EventHandler for Handler {
         let guild_id = new_member.guild_id;
         let user_id = new_member.user.id;
 
-        if let Err(e) = features::welcome_role::add_member(&ctx, guild_id, user_id).await {
+        if let Err(e) = features::welcome_role::execute_member_action(
+            &ctx,
+            guild_id,
+            user_id,
+            features::welcome_role::MemberAction::Add,
+        )
+        .await
+        {
             println!("[ERROR] Could not add member to collection. Error: {}", e);
         };
     }
@@ -81,7 +88,14 @@ impl EventHandler for Handler {
             return;
         }
 
-        if let Err(e) = features::welcome_role::remove_member(&ctx, guild_id, user.id).await {
+        if let Err(e) = features::welcome_role::execute_member_action(
+            &ctx,
+            guild_id,
+            user.id,
+            features::welcome_role::MemberAction::Remove,
+        )
+        .await
+        {
             println!(
                 "[ERROR] Could not remove member from collection. Error: {}",
                 e

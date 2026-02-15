@@ -47,10 +47,7 @@ pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
     println!("[SCHEDULER] Meetup.com event scheduler spawned successfully.");
 }
 
-// three actions:
-// - update discord with db only
-// - pull new meetup events and update discord events
-
+#[allow(unused)]
 pub enum MeetupAction {
     Sync(Option<GuildId>),
     FetchAndSync,
@@ -66,8 +63,12 @@ pub async fn execute_meetup_action(
         MeetupAction::Sync(guild_id) => {
             // use existing db data only
             // if guild id is provided, only resync in that guild
+            //
             // TODO: To allow single guild resyncs, use a cacheing system of some kind so updates
             // are not lost
+            // Issue with this: If changes are cached, and the bot goes down then back up, changes
+            // are lost and can only be recovered by basically rebuilding the db
+            //
             // fetch only guilds that are tracking at least one meetup group
             if let Some(_guild_id) = guild_id {
                 return Ok(());
