@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM meetup_events WHERE end_time <= $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a138cb42c190283bac2395c11ef3b3d4ebca59adee790d8039a00a6b940cd4f9"
+}

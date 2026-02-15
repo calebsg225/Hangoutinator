@@ -1,5 +1,7 @@
 //! src/commands/meetup/refetch.rs
 
+use chrono::Local;
+
 use crate::commands::_util as util;
 use crate::features::event_manager;
 use crate::{Context, Error};
@@ -10,7 +12,15 @@ pub async fn command(ctx: Context<'_>) -> Result<(), Error> {
     let pool1 = ctx.data().pool.clone();
     let ctx1 = ctx.serenity_context().clone();
     tokio::spawn(async move {
-        if let Err(e) = event_manager::sync_meetup_discord_events(&ctx1, &pool1).await {
+        let now = Local::now();
+        if let Err(e) = event_manager::execute_meetup_action(
+            &ctx1,
+            &pool1,
+            now,
+            event_manager::MeetupAction::FetchAndSync,
+        )
+        .await
+        {
             println!("Could not fetch/sync events. Error: {}", e);
         }
     });

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM meetup_events WHERE last_synced <= $1 AND meetup_group_name = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7bee2f9805d691418de21871145aa70beea298e6a807bb334e566e84f1c35835"
+}

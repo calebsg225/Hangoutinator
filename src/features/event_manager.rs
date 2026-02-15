@@ -36,7 +36,10 @@ pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
         let mut interval = tokio::time::interval(REFETCH_MEETUP_DATA_INTERVAL);
         loop {
             interval.tick().await;
-            if let Err(e) = sync_meetup_discord_events(&ctx1, &pool1).await {
+            let now = Local::now();
+            if let Err(e) =
+                execute_meetup_action(&ctx1, &pool1, now, MeetupAction::FetchAndSync).await
+            {
                 println!("[ERROR] Cound not sync events. Error: {}", e);
             }
         }
@@ -44,21 +47,58 @@ pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
     println!("[SCHEDULER] Meetup.com event scheduler spawned successfully.");
 }
 
-pub async fn sync_meetup_discord_events(ctx: &Context, pool: &sqlx::PgPool) -> Result<(), Error> {
-    println!("[{}]", Local::now());
-    match sync_meetup_events(pool).await {
-        Ok(updates) => {
-            sync_discord_events(ctx, pool, updates.to_owned()).await?;
+// three actions:
+// - update discord with db only
+// - pull new meetup events and update discord events
+
+pub enum MeetupAction {
+    Sync(Option<GuildId>),
+    FetchAndSync,
+}
+
+pub async fn execute_meetup_action(
+    ctx: &Context,
+    pool: &sqlx::PgPool,
+    now: DateTime<Local>,
+    action: MeetupAction,
+) -> Result<(), Error> {
+    match action {
+        MeetupAction::Sync(guild_id) => {
+            // use existing db data only
+            // if guild id is provided, only resync in that guild
+            // TODO: To allow single guild resyncs, use a cacheing system of some kind so updates
+            // are not lost
+            // fetch only guilds that are tracking at least one meetup group
+            if let Some(_guild_id) = guild_id {
+                return Ok(());
+            }
+
+            let updates = clean(pool, now, CleanEvents::ExpiredMeetup).await?;
+            sync_discord_events(ctx, pool, now, updates).await?;
+
+            Ok(())
         }
-        Err(e) => println!("[ERROR] Failed to sync with meetup.com data. Error: {}", e),
-    };
-    Ok(())
+        MeetupAction::FetchAndSync => {
+            // pull new data from meetup.com, update db
+            // resync all guilds
+            println!("[{}]", now);
+            match fetch_meetup_events(pool, now).await {
+                Ok(updates) => {
+                    sync_discord_events(ctx, pool, now, updates.to_owned()).await?;
+                }
+                Err(e) => println!("[ERROR] Failed to sync with meetup.com data. Error: {}", e),
+            };
+            Ok(())
+        }
+    }
 }
 
 /// Fetches new meetup event data for all guild-tracked meetup groups, updates db with new data.
-async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, Error> {
+async fn fetch_meetup_events(
+    pool: &sqlx::PgPool,
+    now: DateTime<Local>,
+) -> Result<HashSet<BigDecimal>, Error> {
     // use the same time for all `last_synced` fields
-    let now = Local::now();
     let mut res: HashSet<BigDecimal> = HashSet::new();
     // get all tracked meetup groups
     let meetup_groups = sqlx::query!("SELECT DISTINCT group_name FROM meetup_groups_guilds")
@@ -100,6 +140,8 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
                 }
             };
         }
+        // if group data was fetched successfully, remove unsynced events
+        res.extend(clean(pool, now, CleanEvents::Outdated(&group.group_name)).await?);
     }
     println!(
         "[FETCH] [{}] meetup events from [{}] tracked meetup groups.",
@@ -107,7 +149,7 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
         meetup_groups.len()
     );
 
-    res.extend(clean(pool, now).await?);
+    res.extend(clean(pool, now, CleanEvents::ExpiredMeetup).await?);
     Ok(res)
 }
 
@@ -117,6 +159,7 @@ async fn sync_meetup_events(pool: &sqlx::PgPool) -> Result<HashSet<BigDecimal>, 
 async fn sync_discord_events(
     ctx: &Context,
     pool: &sqlx::PgPool,
+    now: DateTime<Local>,
     updates: HashSet<BigDecimal>,
 ) -> Result<(), Error> {
     // fetch only guilds that are tracking at least one meetup group
@@ -126,7 +169,7 @@ async fn sync_discord_events(
 
     for guild in guilds_info {
         let guild_id = GuildId::from_big_decimal(&guild.guild_id)?;
-        sync_guild_events(ctx, pool, &updates, guild_id, false).await?;
+        sync_guild_events(ctx, pool, now, &updates, guild_id, false).await?;
     }
 
     // TODO: clean() functionality should be useable without refetching
@@ -160,6 +203,7 @@ pub async fn get_all_guild_collection_hashes(
 pub async fn sync_guild_events(
     ctx: &Context,
     pool: &sqlx::PgPool,
+    now: DateTime<Local>,
     updates: &HashSet<BigDecimal>,
     guild_id: GuildId,
     preserve_tracking_changes: bool,
@@ -172,7 +216,7 @@ pub async fn sync_guild_events(
     // combine global updates with guild-specific tracking updates
     let updates = merge_tracking_updates(ctx, pool, &guild_id, updates).await?;
 
-    clean_discord_events(pool, Local::now(), &guild_id).await?;
+    clean(pool, now, CleanEvents::ExpiredDiscord(&guild_id)).await?;
 
     if !preserve_tracking_changes {
         clear_group_updates(ctx, &guild_id).await?;
@@ -370,12 +414,6 @@ pub async fn sync_guild_events(
     Ok(())
 }
 
-enum ManageType {
-    Create,
-    Edit(ScheduledEventId),
-    Delete(ScheduledEventId),
-}
-
 /// builds the first part of a discord event description
 /// from a vec of meetup events
 fn build_description(meetup_events: &Vec<DBMeetupEvent>) -> String {
@@ -393,6 +431,12 @@ fn build_description(meetup_events: &Vec<DBMeetupEvent>) -> String {
         return des.split_at(995).0.to_string() + " ...";
     }
     des
+}
+
+enum ManageType {
+    Create,
+    Edit(ScheduledEventId),
+    Delete(ScheduledEventId),
 }
 
 /// either create or edit a discord event, built from meetup event(s) data
@@ -616,56 +660,73 @@ async fn add_meetup_event(
     Ok(weekly_collection_hash)
 }
 
-/// Removes meetup events from the db if:
-///  - the event has expired
-///  - the event was not synced during the most recent resync (indicating either a deleted meetup
-///  event or an untracked meetup group)
-///
-/// This function is designed to be run directly after a sync has occured.
-///
-/// returns a set of all affected unique collection hashes
-async fn clean(pool: &sqlx::PgPool, now: DateTime<Local>) -> Result<HashSet<BigDecimal>, Error> {
-    // select a time before the most recent sync but after the sync before that
-    let outdated_last_synced = now
-        .checked_sub_signed(TimeDelta::from_std(LAST_SYNCED_DELAY).unwrap())
-        .unwrap();
-
-    let expired_or_deleted_meetup_event_collection_hashes = sqlx::query!(
-        "SELECT DISTINCT weekly_collection_hash FROM meetup_events WHERE end_time <= $1 OR last_synced <= $2",
-        now,
-        outdated_last_synced,
-    )
-    .fetch_all(pool)
-    .await?;
-
-    sqlx::query!(
-        "DELETE FROM meetup_events WHERE end_time <= $1 OR last_synced <= $2",
-        now,
-        outdated_last_synced
-    )
-    .execute(pool)
-    .await?;
-
-    Ok(expired_or_deleted_meetup_event_collection_hashes
-        .iter()
-        .map(|r| r.weekly_collection_hash.to_owned())
-        .collect())
+enum CleanEvents<'a> {
+    ExpiredMeetup,
+    ExpiredDiscord(&'a GuildId),
+    Outdated(&'a String),
 }
 
-/// removes expired discord events in a guild
-async fn clean_discord_events(
+async fn clean(
     pool: &sqlx::PgPool,
     now: DateTime<Local>,
-    guild_id: &GuildId,
-) -> Result<(), Error> {
-    sqlx::query!(
-        "DELETE FROM discord_events WHERE end_time <= $1 AND guild_id = $2",
-        now,
-        BigDecimal::from(guild_id.get())
-    )
-    .execute(pool)
-    .await?;
-    Ok(())
+    clean: CleanEvents<'_>,
+) -> Result<HashSet<BigDecimal>, Error> {
+    match clean {
+        CleanEvents::ExpiredMeetup => {
+            let expired_meetup_event_collection_hashes = sqlx::query!(
+                "SELECT DISTINCT weekly_collection_hash FROM meetup_events WHERE end_time <= $1",
+                now,
+            )
+            .fetch_all(pool)
+            .await?;
+
+            sqlx::query!("DELETE FROM meetup_events WHERE end_time <= $1", now,)
+                .execute(pool)
+                .await?;
+
+            Ok(expired_meetup_event_collection_hashes
+                .iter()
+                .map(|r| r.weekly_collection_hash.to_owned())
+                .collect())
+        }
+        CleanEvents::ExpiredDiscord(guild_id) => {
+            sqlx::query!(
+                "DELETE FROM discord_events WHERE end_time <= $1 AND guild_id = $2",
+                now,
+                BigDecimal::from(guild_id.get())
+            )
+            .execute(pool)
+            .await?;
+            Ok(HashSet::new())
+        }
+        CleanEvents::Outdated(group_name) => {
+            // select a time before the most recent sync but after the sync before that
+            let outdated_last_synced = now
+                .checked_sub_signed(TimeDelta::from_std(LAST_SYNCED_DELAY).unwrap())
+                .unwrap();
+
+            let expired_or_deleted_meetup_event_collection_hashes = sqlx::query!(
+                "SELECT DISTINCT weekly_collection_hash FROM meetup_events WHERE last_synced <= $1 AND meetup_group_name = $2",
+                outdated_last_synced,
+                &group_name,
+            )
+            .fetch_all(pool)
+            .await?;
+
+            sqlx::query!(
+                "DELETE FROM meetup_events WHERE last_synced <= $1 AND meetup_group_name = $2",
+                outdated_last_synced,
+                &group_name,
+            )
+            .execute(pool)
+            .await?;
+
+            Ok(expired_or_deleted_meetup_event_collection_hashes
+                .iter()
+                .map(|r| r.weekly_collection_hash.to_owned())
+                .collect())
+        }
+    }
 }
 
 /// Track when a meetup group needs updating

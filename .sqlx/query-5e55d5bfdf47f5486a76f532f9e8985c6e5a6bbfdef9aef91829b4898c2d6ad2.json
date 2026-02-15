@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT weekly_collection_hash FROM meetup_events WHERE last_synced <= $1 AND meetup_group_name = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "weekly_collection_hash",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5e55d5bfdf47f5486a76f532f9e8985c6e5a6bbfdef9aef91829b4898c2d6ad2"
+}
