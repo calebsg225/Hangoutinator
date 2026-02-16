@@ -241,7 +241,34 @@ pub async fn sync_guild_events(
     println!("[SYNC] events in guild with id [{}]...", guild_id.get());
 
     // combine global updates with guild-specific tracking updates
-    let updates = merge_tracking_updates(ctx, pool, &guild_id, updates).await?;
+    let mut updates = merge_tracking_updates(ctx, pool, &guild_id, updates).await?;
+
+    // these are meetup events that are linked to a meetup group tracked by a guild with no
+    // discord events in that guild representing them
+    // TODO: fetch all (not just for one guild), then cache the data?
+    // That way a left join is only required once per resync, not per guild...
+    let unsynced_collection_hashes = sqlx::query!(
+        r#"
+            SELECT DISTINCT me.weekly_collection_hash
+            FROM meetup_events AS me
+            LEFT JOIN discord_events AS de
+            ON de.collection_hash = me.weekly_collection_hash
+            INNER JOIN meetup_groups_guilds AS mgg
+            ON mgg.group_name = me.meetup_group_name
+            WHERE de.collection_hash IS NULL
+            AND mgg.guild_id = $1
+        "#,
+        BigDecimal::from(guild_id.get())
+    )
+    .fetch_all(pool)
+    .await?;
+
+    updates.extend(
+        unsynced_collection_hashes
+            .iter()
+            .map(|r| r.weekly_collection_hash.to_owned())
+            .collect::<HashSet<BigDecimal>>(),
+    );
 
     clean(pool, now, CleanEvents::ExpiredDiscord(&guild_id)).await?;
 
