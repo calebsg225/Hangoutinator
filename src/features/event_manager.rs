@@ -51,6 +51,7 @@ pub fn run_scheduler(ctx: &Context, pool: &sqlx::PgPool) {
 pub enum MeetupAction {
     Sync(Option<GuildId>),
     FetchAndSync,
+    Purge(Option<GuildId>),
 }
 
 pub async fn execute_meetup_action(
@@ -89,6 +90,31 @@ pub async fn execute_meetup_action(
                 }
                 Err(e) => println!("[ERROR] Failed to sync with meetup.com data. Error: {}", e),
             };
+            Ok(())
+        }
+        MeetupAction::Purge(guild_id) => {
+            let Some(guild_id) = guild_id else {
+                // TODO: global purge??
+                return Ok(());
+            };
+
+            let discord_events = sqlx::query!(
+                "SELECT * FROM discord_events WHERE guild_id = $1",
+                BigDecimal::from(guild_id.get())
+            )
+            .fetch_all(pool)
+            .await?;
+            for event in discord_events {
+                let event_id = ScheduledEventId::from_big_decimal(&event.discord_event_id)?;
+                manage_scheduled_event(
+                    ctx,
+                    ManageType::Delete(event_id),
+                    Vec::new(),
+                    guild_id,
+                    pool,
+                )
+                .await?;
+            }
             Ok(())
         }
     }
