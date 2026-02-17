@@ -9,6 +9,7 @@
 use reqwest::StatusCode;
 use scraper::{Html, Selector};
 use serde_json::{Map, Value};
+use serenity::all::ErrorResponse;
 use std::collections::HashMap;
 
 use crate::Error;
@@ -47,11 +48,12 @@ fn fetch_json(group_name: &str) -> Result<String, Error> {
     let url = build_url(group_name);
     let response = reqwest::blocking::get(&url)?;
     if response.status() != StatusCode::OK {
-        println!(
-            "Response status fetching from `{}`: {}",
+        return Err(format!(
+            "[FETCH] Response status from `{}`: {}",
             url,
             response.status()
-        );
+        )
+        .into());
     }
 
     let document = Html::parse_document(&response.text()?);
