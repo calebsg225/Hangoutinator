@@ -12,6 +12,7 @@ use serenity::prelude::TypeMapKey;
 use sqlx::types::BigDecimal;
 
 use crate::features::_util as util;
+use crate::meetup::model::MeetupEventStatus;
 use crate::meetup::{
     model::MeetupEvent,
     scrape::{self},
@@ -619,6 +620,11 @@ async fn update_meetup_event(
     new_event: MeetupEvent,
 ) -> Result<HashSet<BigDecimal>, Error> {
     let event_hash = new_event.get_hash();
+    // if an existing event is now cancelled, remove it from the db and return its hash to be
+    // updated
+    if new_event.status == MeetupEventStatus::CANCELLED {
+        return clean(pool, now, CleanEvents::SelectMeetup(&new_event.id)).await;
+    }
     if old_event.event_hash == BigDecimal::from(event_hash) {
         sqlx::query!(
             "UPDATE meetup_events SET last_synced = $1 WHERE meetup_event_id = $2",
@@ -676,6 +682,10 @@ async fn add_meetup_event(
     new_event: MeetupEvent,
 ) -> Result<BigDecimal, Error> {
     let weekly_collection_hash = BigDecimal::from(new_event.get_weekly_collection_hash());
+    // if an event is cancelled, dont add it
+    if new_event.status == MeetupEventStatus::CANCELLED {
+        return Ok(weekly_collection_hash);
+    }
     sqlx::query!(
         r#"
             INSERT INTO meetup_events
@@ -716,6 +726,7 @@ async fn add_meetup_event(
 
 enum CleanEvents<'a> {
     ExpiredMeetup,
+    SelectMeetup(&'a String),
     ExpiredDiscord(&'a GuildId),
     Outdated(&'a String),
 }
@@ -742,6 +753,27 @@ async fn clean(
                 .iter()
                 .map(|r| r.weekly_collection_hash.to_owned())
                 .collect())
+        }
+        CleanEvents::SelectMeetup(meetup_event_id) => {
+            let meetup_event_collection_hash = sqlx::query!(
+                "SELECT weekly_collection_hash FROM meetup_events WHERE meetup_event_id = $1",
+                meetup_event_id,
+            )
+            .fetch_optional(pool)
+            .await?;
+
+            let Some(rec) = meetup_event_collection_hash else {
+                return Ok(HashSet::new());
+            };
+
+            sqlx::query!(
+                "DELETE FROM meetup_events WHERE meetup_event_id = $1",
+                meetup_event_id,
+            )
+            .execute(pool)
+            .await?;
+
+            Ok(HashSet::from([rec.weekly_collection_hash]))
         }
         CleanEvents::ExpiredDiscord(guild_id) => {
             sqlx::query!(

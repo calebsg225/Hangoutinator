@@ -123,6 +123,7 @@ struct RawMeetupEvent {
     #[serde(rename = "featuredEventPhoto")]
     #[serde(deserialize_with = "string_from_sub_ref")]
     pub photo: String, // points to `PhotoInfo:` prop
+    pub status: String,
 }
 
 /// 'refined' meetup event data built from a 'RawMeetupEvent' stuct
@@ -141,6 +142,7 @@ pub struct MeetupEvent {
     pub end_time: DateTime<FixedOffset>,
     pub going: usize,
     pub photo: Option<PhotoInfo>,
+    pub status: MeetupEventStatus,
 }
 
 impl MeetupEvent {
@@ -166,6 +168,7 @@ impl MeetupEvent {
             end_time: raw_event.end_time,
             going: raw_event.going,
             photo,
+            status: MeetupEventStatus::from(raw_event.status.as_str()),
         }
     }
     /// generates a unique event hash
@@ -348,6 +351,26 @@ struct SubMember {
 struct SubCount {
     #[serde(rename = "totalCount")]
     pub total_count: usize,
+}
+
+/// Possible status options for meetup events
+#[derive(PartialEq)]
+pub enum MeetupEventStatus {
+    ACTIVE,
+    PAID,
+    CANCELLED,
+    UNKNOWN(String),
+}
+
+impl From<&str> for MeetupEventStatus {
+    fn from(s: &str) -> Self {
+        match s {
+            "ACTIVE" => MeetupEventStatus::ACTIVE,
+            "PAID" => MeetupEventStatus::PAID,
+            "CANCELLED" => MeetupEventStatus::CANCELLED,
+            s => MeetupEventStatus::UNKNOWN(s.to_string()),
+        }
+    }
 }
 
 /// Extracts JSON `Value`s whos keys match a partial string.
@@ -536,6 +559,7 @@ mod tests {
                 "__typename": "GoingRsvpConnection",
                 "totalCount": 42
             },
+            "status": "CANCELLED",
             "featuredEventPhoto": {
                 "__ref": "PhotoInfo:141414141"
             }
