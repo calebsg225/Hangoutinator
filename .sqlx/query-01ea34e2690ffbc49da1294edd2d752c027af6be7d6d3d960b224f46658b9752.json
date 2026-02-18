@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM meetup_events WHERE meetup_event_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "01ea34e2690ffbc49da1294edd2d752c027af6be7d6d3d960b224f46658b9752"
+}
