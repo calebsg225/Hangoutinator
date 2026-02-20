@@ -137,16 +137,15 @@ async fn fetch_meetup_events(
     } else {
         println!("[FETCH] from [{}] meetup groups...", meetup_groups.len());
     }
+    // scrape meetup site, aggregate into one struct
+    let groups_data = scrape::get_meetup_groups_data(
+        meetup_groups
+            .iter()
+            .map(|g| g.group_name.as_str())
+            .collect(),
+    )?;
     let mut total_events = 0;
-    for group in &meetup_groups {
-        // scrape meetup site, aggregate into one struct
-        let Ok(group_data) = scrape::get_meetup_group_data(&group.group_name) else {
-            println!(
-                "[ERROR] Failed to fetch meetup data for meetup group `{}`",
-                group.group_name
-            );
-            continue;
-        };
+    for group_data in &groups_data {
         // all (immediate upcoming, up to 30) meetup events in this meetup group
         let events: Vec<MeetupEvent> = group_data.get_events();
         total_events += events.len();
@@ -168,8 +167,7 @@ async fn fetch_meetup_events(
                 }
             };
         }
-        // if group data was fetched successfully, remove unsynced events
-        res.extend(clean(pool, now, CleanEvents::Outdated(&group.group_name)).await?);
+        res.extend(clean(pool, now, CleanEvents::Outdated(&group_data.group.name)).await?);
     }
     println!(
         "[FETCH] [{}] meetup events from [{}] tracked meetup groups.",

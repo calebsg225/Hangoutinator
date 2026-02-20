@@ -16,7 +16,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 /// that data to build `refined` event data in the form of a single
 /// `MeetupEvent` type
 pub struct MeetupEventBuilder {
-    group: RawGroup,
+    pub group: RawGroup,
     events: Vec<RawMeetupEvent>,
     members: BTreeMap<String, RawMember>,
     photos: BTreeMap<String, PhotoInfo>,
@@ -299,7 +299,7 @@ pub struct PhotoInfo {
 /// data structure matching meetup `Group:` prop
 /// eg. `Group:123456789`
 #[derive(Deserialize, Clone)]
-struct RawGroup {
+pub struct RawGroup {
     pub id: String,
     pub name: String,
     #[serde(rename = "urlname")]
