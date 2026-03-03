@@ -19,7 +19,7 @@ use crate::meetup::{
 };
 use crate::{Error, IdExt};
 
-const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3600);
+const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(1800);
 const LAST_SYNCED_DELAY: std::time::Duration = std::time::Duration::from_secs(60);
 
 pub struct GroupUpdatesCollection;
