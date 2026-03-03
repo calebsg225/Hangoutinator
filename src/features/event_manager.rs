@@ -167,7 +167,6 @@ async fn fetch_meetup_events(
                 }
             };
         }
-        res.extend(clean(pool, now, CleanEvents::Outdated(&group_data.group.name)).await?);
     }
     println!(
         "[FETCH] [{}] meetup events from [{}] tracked meetup groups.",
@@ -175,6 +174,7 @@ async fn fetch_meetup_events(
         meetup_groups.len()
     );
 
+    res.extend(clean(pool, now, CleanEvents::OutdatedMeetup).await?);
     res.extend(clean(pool, now, CleanEvents::ExpiredMeetup).await?);
     Ok(res)
 }
@@ -726,7 +726,7 @@ enum CleanEvents<'a> {
     ExpiredMeetup,
     SelectMeetup(&'a String),
     ExpiredDiscord(&'a GuildId),
-    Outdated(&'a String),
+    OutdatedMeetup,
 }
 
 async fn clean(
@@ -783,24 +783,22 @@ async fn clean(
             .await?;
             Ok(HashSet::new())
         }
-        CleanEvents::Outdated(group_name) => {
+        CleanEvents::OutdatedMeetup => {
             // select a time before the most recent sync but after the sync before that
             let outdated_last_synced = now
                 .checked_sub_signed(TimeDelta::from_std(LAST_SYNCED_DELAY).unwrap())
                 .unwrap();
 
             let expired_or_deleted_meetup_event_collection_hashes = sqlx::query!(
-                "SELECT DISTINCT weekly_collection_hash FROM meetup_events WHERE last_synced <= $1 AND meetup_group_name = $2",
+                "SELECT DISTINCT weekly_collection_hash FROM meetup_events WHERE last_synced <= $1",
                 outdated_last_synced,
-                &group_name,
             )
             .fetch_all(pool)
             .await?;
 
             sqlx::query!(
-                "DELETE FROM meetup_events WHERE last_synced <= $1 AND meetup_group_name = $2",
+                "DELETE FROM meetup_events WHERE last_synced <= $1",
                 outdated_last_synced,
-                &group_name,
             )
             .execute(pool)
             .await?;
