@@ -138,6 +138,7 @@ async fn fetch_meetup_events(
         println!("[FETCH] from [{}] meetup groups...", meetup_groups.len());
     }
     // scrape meetup site, aggregate into one struct
+    // Only data for successfully fetched meetup groups will be included in this vec.
     let groups_data = scrape::get_meetup_groups_data(
         meetup_groups
             .iter()
@@ -166,6 +167,15 @@ async fn fetch_meetup_events(
                     res.insert(add_meetup_event(pool, now, event).await?);
                 }
             };
+            // NOTE: Clear out any outdated meetup events ONLY on groups successfully fetched
+            res.extend(
+                clean(
+                    pool,
+                    now,
+                    CleanEvents::OutdatedMeetup(&group_data.group.url_name),
+                )
+                .await?,
+            );
         }
     }
     println!(
@@ -174,7 +184,7 @@ async fn fetch_meetup_events(
         meetup_groups.len()
     );
 
-    res.extend(clean(pool, now, CleanEvents::OutdatedMeetup).await?);
+    // NOTE: Do not clear out outdated meetup events here!!
     res.extend(clean(pool, now, CleanEvents::ExpiredMeetup).await?);
     Ok(res)
 }
@@ -726,7 +736,7 @@ enum CleanEvents<'a> {
     ExpiredMeetup,
     SelectMeetup(&'a String),
     ExpiredDiscord(&'a GuildId),
-    OutdatedMeetup,
+    OutdatedMeetup(&'a String),
 }
 
 async fn clean(
@@ -783,21 +793,23 @@ async fn clean(
             .await?;
             Ok(HashSet::new())
         }
-        CleanEvents::OutdatedMeetup => {
+        CleanEvents::OutdatedMeetup(group_name) => {
             // select a time before the most recent sync but after the sync before that
             let outdated_last_synced = now
                 .checked_sub_signed(TimeDelta::from_std(LAST_SYNCED_DELAY).unwrap())
                 .unwrap();
 
             let expired_or_deleted_meetup_event_collection_hashes = sqlx::query!(
-                "SELECT DISTINCT weekly_collection_hash FROM meetup_events WHERE last_synced <= $1",
+                "SELECT DISTINCT weekly_collection_hash FROM meetup_events WHERE meetup_group_name = $1 AND last_synced <= $2",
+                group_name,
                 outdated_last_synced,
             )
             .fetch_all(pool)
             .await?;
 
             sqlx::query!(
-                "DELETE FROM meetup_events WHERE last_synced <= $1",
+                "DELETE FROM meetup_events WHERE meetup_group_name = $1 AND last_synced <= $2",
+                group_name,
                 outdated_last_synced,
             )
             .execute(pool)
