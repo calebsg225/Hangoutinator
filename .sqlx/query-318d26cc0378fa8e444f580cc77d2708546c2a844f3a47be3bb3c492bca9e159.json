@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT logging_level FROM guilds WHERE guild_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "logging_level",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "318d26cc0378fa8e444f580cc77d2708546c2a844f3a47be3bb3c492bca9e159"
+}

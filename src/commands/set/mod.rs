@@ -1,5 +1,7 @@
 //! src/commands/set/mod.rs
 
+pub mod logging_channel;
+pub mod logging_level;
 pub mod welcome_channel;
 pub mod welcome_role;
 

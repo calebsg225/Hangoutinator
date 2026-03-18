@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT logging_channel_id, logging_level FROM guilds WHERE logging_channel_id IS NOT NULL AND logging_level IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "logging_channel_id",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "logging_level",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "771fbd7573c4ac6c1c422c669a9488148f6493118a3d1408061de9a5dbfa065b"
+}

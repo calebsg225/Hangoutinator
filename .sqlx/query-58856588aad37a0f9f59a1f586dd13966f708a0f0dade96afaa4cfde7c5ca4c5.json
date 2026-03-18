@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT logging_channel_id FROM guilds WHERE guild_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "logging_channel_id",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "58856588aad37a0f9f59a1f586dd13966f708a0f0dade96afaa4cfde7c5ca4c5"
+}

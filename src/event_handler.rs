@@ -9,7 +9,10 @@ use serenity::{
 };
 use sqlx::types::BigDecimal;
 
-use crate::features::{self, event_manager};
+use crate::features::{
+    self, event_manager,
+    logging::{DiscordLogLevel, log},
+};
 
 pub struct Handler {
     pub pool: sqlx::PgPool,
@@ -119,6 +122,13 @@ impl EventHandler for Handler {
 
     /// runs when the bot is ready
     async fn ready(&self, ctx: Context, ready: Ready) {
+        let _ = log(
+            &ctx,
+            &self.pool,
+            "I am online!".to_string(),
+            DiscordLogLevel::Info,
+        )
+        .await;
         println!("[READY] {} is connected!", ready.user.name);
         event_manager::populate_db_guilds(&ctx, &self.pool)
             .await
