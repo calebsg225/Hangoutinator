@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT welcome_role_id, welcome_channel_id FROM guilds WHERE guild_id = $1",
+  "query": "SELECT welcome_role_id, welcome_channel_id, message_index FROM guilds WHERE guild_id = $1",
   "describe": {
     "columns": [
       {
@@ -12,6 +12,11 @@
         "ordinal": 1,
         "name": "welcome_channel_id",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "message_index",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
@@ -21,8 +26,9 @@
     },
     "nullable": [
       true,
+      true,
       true
     ]
   },
-  "hash": "2e62fcbfc8fee61a90200cbf08267f1ff8d3423893c1a2f3939069e84373dcdc"
+  "hash": "be2350c853a12a4253e27c5fef624b18222eb0ebbeae6acf4a23c5fd6e71bd1f"
 }

@@ -22,6 +22,11 @@
         "ordinal": 3,
         "name": "access_role_id",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "message_index",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
@@ -29,6 +34,7 @@
     },
     "nullable": [
       false,
+      true,
       true,
       true,
       true

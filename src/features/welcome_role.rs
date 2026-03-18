@@ -2,14 +2,14 @@
 
 use std::collections::{HashMap, HashSet};
 
-use rand::seq::IndexedRandom;
 use serenity::{
     all::{
-        ChannelId, Context, CreateMessage, GuildId, GuildMemberUpdateEvent, Mention, Mentionable,
-        RoleId, UserId,
+        ChannelId, Context, CreateMessage, GuildId, GuildMemberUpdateEvent, Mentionable, RoleId,
+        UserId,
     },
     prelude::TypeMapKey,
 };
+use sqlx::types::BigDecimal;
 
 use crate::features::_util as util;
 use crate::{Error, IdExt};
@@ -70,10 +70,34 @@ pub async fn execute_member_action(
 /// checks if a member has just been verified. If so, sends a welcome message.
 pub async fn welcome_verified_member(
     ctx: &Context,
+    pool: &sqlx::PgPool,
     event: &GuildMemberUpdateEvent,
-    verified_role_id: &RoleId,
-    welcome_channel_id: &ChannelId,
 ) -> Result<(), Error> {
+    let guild_info = sqlx::query!(
+        "SELECT welcome_role_id, welcome_channel_id, message_index FROM guilds WHERE guild_id = $1",
+        BigDecimal::from(event.guild_id.get())
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    let Some(welcome_role_id) = guild_info.welcome_role_id else {
+        return Ok(());
+    };
+    let Some(welcome_channel_id) = guild_info.welcome_channel_id else {
+        return Ok(());
+    };
+    let mut message_index: usize = match guild_info.message_index {
+        Some(i) => {
+            let i = i as usize;
+            if i > WELCOME_MESSAGES.len() - 1 { 0 } else { i }
+        }
+        None => 0,
+    };
+
+    let role_id = RoleId::from_big_decimal(&welcome_role_id).unwrap();
+    let channel_id = ChannelId::from_big_decimal(&welcome_channel_id).unwrap();
+
     let is_unverified = execute_member_action(
         &ctx,
         event.guild_id,
@@ -81,12 +105,24 @@ pub async fn welcome_verified_member(
         MemberAction::IsUnverified,
     )
     .await?;
-    let member_has_role = event.roles.contains(&verified_role_id);
+    let member_has_role = event.roles.contains(&role_id);
 
     if is_unverified && member_has_role {
         execute_member_action(&ctx, event.guild_id, event.user.id, MemberAction::Remove).await?;
-        let welcome_message = build_welcome_message(event.user.mention());
-        let _ = welcome_channel_id
+        let welcome_message = format!(
+            "{} {}",
+            event.user.mention(),
+            WELCOME_MESSAGES[message_index]
+        );
+        message_index += 1;
+        sqlx::query!(
+            "UPDATE guilds SET message_index = $1 WHERE guild_id = $2",
+            message_index as i32,
+            BigDecimal::from(event.guild_id.get())
+        )
+        .execute(pool)
+        .await?;
+        let _ = channel_id
             .send_message(&ctx.http, CreateMessage::new().content(welcome_message))
             .await;
         println!("Member `{}` has been welcomed.", event.user.name);
@@ -132,10 +168,4 @@ pub async fn populate_unverified_guild_members(
     );
     global_unverified_members.insert(guild_id, unverified_guild_members);
     Ok(())
-}
-
-/// build a welcome message, choosing one at random
-fn build_welcome_message(user_name: Mention) -> String {
-    let msg = WELCOME_MESSAGES.choose(&mut rand::rng()).unwrap();
-    format!("{} {}", user_name, msg)
 }

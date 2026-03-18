@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE guilds SET message_index = $1 WHERE guild_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "08e15f66dfe15ce89592a82dcfb4b6ddfa9a22f00b06df2d8dd4000e608b3263"
+}

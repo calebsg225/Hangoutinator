@@ -2,17 +2,14 @@
 
 use serenity::{
     all::{
-        ChannelId, Context, EventHandler, Guild, GuildId, GuildMemberUpdateEvent, Member, Ready,
-        RoleId, UnavailableGuild, User,
+        Context, EventHandler, Guild, GuildId, GuildMemberUpdateEvent, Member, Ready,
+        UnavailableGuild, User,
     },
     async_trait,
 };
 use sqlx::types::BigDecimal;
 
-use crate::{
-    IdExt,
-    features::{self, event_manager},
-};
+use crate::features::{self, event_manager};
 
 pub struct Handler {
     pub pool: sqlx::PgPool,
@@ -32,27 +29,8 @@ impl EventHandler for Handler {
             return;
         }
 
-        let guild_info = sqlx::query!(
-            "SELECT welcome_role_id, welcome_channel_id FROM guilds WHERE guild_id = $1",
-            BigDecimal::from(event.guild_id.get())
-        )
-        .fetch_one(&self.pool)
-        .await
-        .unwrap();
-
-        let Some(welcome_role_id) = guild_info.welcome_role_id else {
-            return;
-        };
-        let Some(welcome_channel_id) = guild_info.welcome_channel_id else {
-            return;
-        };
-
-        let role_id = RoleId::from_big_decimal(&welcome_role_id).unwrap();
-        let channel_id = ChannelId::from_big_decimal(&welcome_channel_id).unwrap();
-
         if let Err(e) =
-            features::welcome_role::welcome_verified_member(&ctx, &event, &role_id, &channel_id)
-                .await
+            features::welcome_role::welcome_verified_member(&ctx, &self.pool, &event).await
         {
             println!("[ERROR] Could not welcome member. Error: {}", e);
         };
