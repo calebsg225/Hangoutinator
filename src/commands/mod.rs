@@ -17,6 +17,7 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
             subcommands: vec![
                 set::welcome_role::command(),
                 set::welcome_channel::command(),
+                set::event_links_channel::command(),
             ],
             ..set::command()
         },

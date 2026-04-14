@@ -5,8 +5,8 @@ use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, FixedOffset, Local, TimeDelta};
 use serenity::all::{
-    Context, CreateScheduledEvent, EditScheduledEvent, GuildId, ScheduledEventId,
-    ScheduledEventType,
+    ChannelId, Context, CreateMessage, CreateScheduledEvent, EditScheduledEvent, GuildId,
+    ScheduledEventId, ScheduledEventType,
 };
 use serenity::prelude::TypeMapKey;
 use sqlx::types::BigDecimal;
@@ -21,6 +21,7 @@ use crate::{Error, IdExt};
 
 const REFETCH_MEETUP_DATA_INTERVAL: std::time::Duration = std::time::Duration::from_secs(1800);
 const LAST_SYNCED_DELAY: std::time::Duration = std::time::Duration::from_secs(60);
+const DISCORD_EVENT_LINK_TIME_LIMIT: std::time::Duration = std::time::Duration::from_secs(86400);
 
 pub struct GroupUpdatesCollection;
 
@@ -561,7 +562,7 @@ async fn manage_scheduled_event(
             .execute(pool)
             .await?;
 
-            for dup in existing_duplicates {
+            for dup in &existing_duplicates {
                 sqlx::query!(
                     r#"
                     INSERT INTO discord_events_meetup_events (
@@ -575,6 +576,43 @@ async fn manage_scheduled_event(
                 .execute(pool)
                 .await?;
             }
+
+            // TODO: Local::now()
+
+            // check that the meetup event(s) tied to this discord event was/were created within a
+            // specified window of time
+            let is_within_time_limit = main_event.created_time
+                > Local::now()
+                    .checked_sub_signed(TimeDelta::from_std(DISCORD_EVENT_LINK_TIME_LIMIT).unwrap())
+                    .unwrap();
+
+            // if the event was created more than [DISCORD_EVENT_LINK_TIME_LIMIT] ago,
+            // do not send link
+            if !is_within_time_limit {
+                return Ok(());
+            }
+
+            let guild_info = sqlx::query!(
+                "SELECT event_links_channel_id FROM guilds WHERE guild_id = $1",
+                BigDecimal::from(guild_id.get())
+            )
+            .fetch_one(pool)
+            .await?;
+
+            // if no event links channel is set, don't send a link
+            let Some(event_links_channel_id) = guild_info.event_links_channel_id else {
+                return Ok(());
+            };
+
+            let msg = format!(
+                "https://discord.com/events/{}/{}",
+                guild_id.get(),
+                res.id.get()
+            );
+            let channel_id = ChannelId::from_big_decimal(&event_links_channel_id)?;
+            channel_id
+                .send_message(&ctx.http, CreateMessage::new().content(msg))
+                .await?;
         }
         ManageType::Edit(scheduled_event_id) => {
             if existing_duplicates.len() == 0 {

@@ -1,5 +1,6 @@
 //! src/commands/set/mod.rs
 
+pub mod event_links_channel;
 pub mod welcome_channel;
 pub mod welcome_role;
 

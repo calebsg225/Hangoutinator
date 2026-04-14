@@ -27,6 +27,11 @@
         "ordinal": 4,
         "name": "message_index",
         "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "event_links_channel_id",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
@@ -34,6 +39,7 @@
     },
     "nullable": [
       false,
+      true,
       true,
       true,
       true,
