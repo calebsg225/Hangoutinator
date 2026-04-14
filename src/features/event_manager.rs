@@ -659,10 +659,11 @@ async fn update_meetup_event(
                 event_hash = $4,
                 duplicate_event_hash = $5,
                 weekly_collection_hash = $6,
-                start_time = $7,
-                end_time = $8,
-                last_synced = $9
-            WHERE meetup_event_id = $10
+                created_time = $7,
+                start_time = $8,
+                end_time = $9,
+                last_synced = $10
+            WHERE meetup_event_id = $11
         "#,
         new_event.title,
         new_event.description,
@@ -670,6 +671,7 @@ async fn update_meetup_event(
         BigDecimal::from(event_hash),
         BigDecimal::from(new_event.get_dup_hash()),
         new_weekly_collection_hash,
+        new_event.created_time,
         new_event.start_time,
         new_event.end_time,
         now,
@@ -707,11 +709,12 @@ async fn add_meetup_event(
                 event_hash,
                 duplicate_event_hash,
                 weekly_collection_hash,
+                created_time,
                 start_time,
                 end_time,
                 last_synced
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         "#,
         new_event.id,
         new_event.group.id,
@@ -722,6 +725,7 @@ async fn add_meetup_event(
         BigDecimal::from(new_event.get_hash()),
         BigDecimal::from(new_event.get_dup_hash()),
         weekly_collection_hash,
+        new_event.created_time,
         new_event.start_time,
         new_event.end_time,
         now
@@ -967,6 +971,7 @@ struct DBMeetupEvent {
     event_hash: BigDecimal,
     duplicate_event_hash: BigDecimal,
     weekly_collection_hash: BigDecimal,
+    created_time: DateTime<FixedOffset>,
     start_time: DateTime<FixedOffset>,
     end_time: DateTime<FixedOffset>,
     last_synced: DateTime<FixedOffset>,
