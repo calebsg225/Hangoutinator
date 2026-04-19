@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT collection_hash FROM discord_events WHERE end_time <= $1 AND guild_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "collection_hash",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "13c21c906c7438660703276fc422d8afa337ab2f81a5dbdfe5d04b3558b5f54f"
+}

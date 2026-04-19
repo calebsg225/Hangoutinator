@@ -280,7 +280,8 @@ pub async fn sync_guild_events(
             .collect::<HashSet<BigDecimal>>(),
     );
 
-    clean(pool, now, CleanEvents::ExpiredDiscord(&guild_id)).await?;
+    let removed_discord_events_collection_hashes =
+        clean(pool, now, CleanEvents::ExpiredDiscord(&guild_id)).await?;
 
     if !preserve_tracking_changes {
         clear_group_updates(ctx, &guild_id).await?;
@@ -300,7 +301,7 @@ pub async fn sync_guild_events(
         // - the meetup group the event belongs to is being tracked by the gulid
         let first_linked_meetup_event = sqlx::query!(
             r#"
-                SELECT me.duplicate_event_hash
+                SELECT me.duplicate_event_hash, me.weekly_collection_hash
                 FROM meetup_events AS me
                 INNER JOIN meetup_groups_guilds AS mgg
                 ON me.meetup_group_name = mgg.group_name
@@ -342,9 +343,12 @@ pub async fn sync_guild_events(
             .fetch_all(pool)
             .await?;
 
+            let is_event_in_series = removed_discord_events_collection_hashes
+                .contains(&first_linked_meetup_event.weekly_collection_hash);
+
             manage_scheduled_event(
                 &ctx,
-                ManageType::Create,
+                ManageType::Create(is_event_in_series),
                 existing_duplicates,
                 guild_id,
                 pool,
@@ -498,7 +502,7 @@ fn build_description(meetup_events: &Vec<DBMeetupEvent>) -> String {
 }
 
 enum ManageType {
-    Create,
+    Create(bool),
     Edit(ScheduledEventId),
     Delete(ScheduledEventId),
 }
@@ -518,7 +522,7 @@ async fn manage_scheduled_event(
     pool: &sqlx::PgPool,
 ) -> Result<(), Error> {
     match manage_type {
-        ManageType::Create => {
+        ManageType::Create(is_event_in_series) => {
             if existing_duplicates.len() == 0 {
                 return Ok(());
             }
@@ -587,8 +591,9 @@ async fn manage_scheduled_event(
                     .unwrap();
 
             // if the event was created more than [DISCORD_EVENT_LINK_TIME_LIMIT] ago,
+            // or the event is not the next in a series,
             // do not send link
-            if !is_within_time_limit {
+            if !is_within_time_limit && !is_event_in_series {
                 return Ok(());
             }
 
@@ -826,14 +831,25 @@ async fn clean(
             Ok(HashSet::from([rec.weekly_collection_hash]))
         }
         CleanEvents::ExpiredDiscord(guild_id) => {
+            let bd_guild_id = BigDecimal::from(guild_id.get());
+
+            let discord_event_info = sqlx::query!(
+                "SELECT collection_hash FROM discord_events WHERE end_time <= $1 AND guild_id = $2",
+                now,
+                bd_guild_id
+            )
+            .fetch_one(pool)
+            .await?;
+
             sqlx::query!(
                 "DELETE FROM discord_events WHERE end_time <= $1 AND guild_id = $2",
                 now,
-                BigDecimal::from(guild_id.get())
+                bd_guild_id
             )
             .execute(pool)
             .await?;
-            Ok(HashSet::new())
+
+            Ok(HashSet::from([discord_event_info.collection_hash]))
         }
         CleanEvents::OutdatedMeetup(group_name) => {
             // select a time before the most recent sync but after the sync before that
