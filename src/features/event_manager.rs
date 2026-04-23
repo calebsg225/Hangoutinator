@@ -833,13 +833,17 @@ async fn clean(
         CleanEvents::ExpiredDiscord(guild_id) => {
             let bd_guild_id = BigDecimal::from(guild_id.get());
 
-            let discord_event_info = sqlx::query!(
+            let discord_events_info = sqlx::query!(
                 "SELECT collection_hash FROM discord_events WHERE end_time <= $1 AND guild_id = $2",
                 now,
                 bd_guild_id
             )
-            .fetch_one(pool)
+            .fetch_optional(pool)
             .await?;
+
+            let Some(discord_events_info) = discord_events_info else {
+                return Ok(HashSet::new());
+            };
 
             sqlx::query!(
                 "DELETE FROM discord_events WHERE end_time <= $1 AND guild_id = $2",
@@ -849,7 +853,7 @@ async fn clean(
             .execute(pool)
             .await?;
 
-            Ok(HashSet::from([discord_event_info.collection_hash]))
+            Ok(HashSet::from([discord_events_info.collection_hash]))
         }
         CleanEvents::OutdatedMeetup(group_name) => {
             // select a time before the most recent sync but after the sync before that
