@@ -610,7 +610,8 @@ async fn manage_scheduled_event(
             };
 
             let msg = format!(
-                "https://discord.com/events/{}/{}",
+                "{}\nhttps://discord.com/events/{}/{}",
+                main_event.title,
                 guild_id.get(),
                 res.id.get()
             );
